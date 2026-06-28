@@ -35,14 +35,23 @@ const priorityColors: Record<string, string> = {
   high: "bg-red-500/10 text-red-500",
 };
 
+type Priority = "low" | "medium" | "high";
+type Status = "todo" | "in_progress" | "done";
+
 export function TaskClient() {
   const { data: tasks, mutate } = useSWR<Task[]>("/api/tasks", fetcher);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string;
+    description: string;
+    status: Status;
+    priority: Priority;
+    dueDate: string;
+  }>({
     title: "",
     description: "",
-    status: "todo" as const,
-    priority: "medium" as const,
+    status: "todo",
+    priority: "medium",
     dueDate: "",
   });
 
@@ -116,7 +125,7 @@ export function TaskClient() {
                   <Label>Priority</Label>
                   <Select
                     value={form.priority}
-                    onValueChange={(v) => setForm({ ...form, priority: v as "low" | "medium" | "high" })}
+                    onValueChange={(v) => setForm({ ...form, priority: v as Priority })}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
