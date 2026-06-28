@@ -46,6 +46,10 @@ next-env.d.ts
 # docker
 postgres_data
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Local-only scripts containing Vercel API tokens — never commit
+vercel_*.js
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
