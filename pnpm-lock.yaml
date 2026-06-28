@@ -65,6 +65,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      js-sha3:
+        specifier: ^0.9.3
+        version: 0.9.3
       lucide-react:
         specifier: ^1.21.0
         version: 1.21.0(react@19.2.4)
@@ -1610,6 +1613,9 @@ packages:
 
   jose@6.2.3:
     resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
+
+  js-sha3@0.9.3:
+    resolution: {integrity: sha512-BcJPCQeLg6WjEx3FE591wVAevlli8lxsxm9/FzV4HXkV49TmBH38Yvrpce6fjbADGMKFrBMGTqrVz3qPIZ88Gg==}
 
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
@@ -3405,6 +3411,8 @@ snapshots:
   jose@4.15.9: {}
 
   jose@6.2.3: {}
+
+  js-sha3@0.9.3: {}
 
   json-schema-traverse@1.0.0: {}
 
