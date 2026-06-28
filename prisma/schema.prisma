@@ -19,10 +19,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  bookmarks Bookmark[]
-  notes     Note[]
-  tasks     Task[]
-  settings  UserSettings?
+  bookmarks    Bookmark[]
+  notes        Note[]
+  tasks        Task[]
+  settings     UserSettings?
+  subscriptions Subscription[]
+  taxConfigs   TaxConfig[]
+  taxRecords   TaxRecord[]
 }
 
 model Account {
@@ -112,4 +115,53 @@ model UserSettings {
   theme           String  @default("system")
   dashboardLayout Json?
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  price     Decimal  @db.Decimal(10, 2)
+  period    String
+  startDate DateTime @default(now())
+  category  String?
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([period])
+}
+
+model TaxConfig {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  rate      Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records   TaxRecord[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model TaxRecord {
+  id          String     @id @default(cuid())
+  userId      String
+  type        String
+  taxConfigId String?
+  date        DateTime
+  amount      Decimal?   @db.Decimal(10, 2)
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taxConfig   TaxConfig? @relation(fields: [taxConfigId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([type])
+  @@index([date])
 }
