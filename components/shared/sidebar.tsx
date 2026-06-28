@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Bookmark, StickyNote, CheckSquare, Settings, Lock } from "lucide-react";
+import {
+  LayoutDashboard,
+  Bookmark,
+  StickyNote,
+  CheckSquare,
+  Settings,
+  Lock,
+  Receipt,
+  Calculator,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -10,6 +19,8 @@ const navItems = [
   { href: "/bookmarks", label: "Bookmarks", icon: Bookmark },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
+  { href: "/subscriptions", label: "Subscriptions", icon: Receipt },
+  { href: "/taxes", label: "Taxes", icon: Calculator },
   { href: "/hasher", label: "Hasher", icon: Lock },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

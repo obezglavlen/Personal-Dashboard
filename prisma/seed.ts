@@ -1,13 +1,13 @@
 import "dotenv/config";
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "../lib/password";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const hashedPassword = await bcrypt.hash("admin123", 12);
+  const hashedPassword = hashPassword("admin123").join("");
 
   const user = await prisma.user.upsert({
     where: { email: "admin@localhost.dev" },
@@ -60,6 +60,24 @@ async function main() {
     data: [
       { userId: user.id, title: "Set up dashboard", status: "done" },
       { userId: user.id, title: "Explore features", status: "todo" },
+    ],
+    skipDuplicates: true,
+  });
+
+  await prisma.subscription.createMany({
+    data: [
+      { userId: user.id, name: "Netflix",  price: 15.99, period: "monthly", category: "entertainment" },
+      { userId: user.id, name: "Spotify",  price: 9.99,  period: "monthly", category: "entertainment" },
+      { userId: user.id, name: "iCloud+",  price: 2.99,  period: "monthly", category: "storage"      },
+      { userId: user.id, name: "GitHub Pro", price: 48,   period: "annual",  category: "dev"          },
+    ],
+    skipDuplicates: true,
+  });
+
+  await prisma.taxConfig.createMany({
+    data: [
+      { userId: user.id, name: "VAT",        rate: 20 },
+      { userId: user.id, name: "Income Tax", rate: 13 },
     ],
     skipDuplicates: true,
   });

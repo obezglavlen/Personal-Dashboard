@@ -2,18 +2,29 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { StatCard } from "@/components/shared/stat-card";
-import { Bookmark, StickyNote, CheckSquare, CheckCircle2 } from "lucide-react";
+import { Bookmark, StickyNote, CheckSquare, CheckCircle2, Receipt, Calculator, FileText } from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const userId = session!.user.id;
 
-  const [bookmarkCount, noteCount, taskCount, completedTasks] = await Promise.all([
+  const [
+    bookmarkCount,
+    noteCount,
+    taskCount,
+    completedTasks,
+    subscriptionCount,
+    taxConfigCount,
+    taxRecordCount,
+  ] = await Promise.all([
     prisma.bookmark.count({ where: { userId } }),
     prisma.note.count({ where: { userId } }),
     prisma.task.count({ where: { userId } }),
     prisma.task.count({ where: { userId, status: "done" } }),
+    prisma.subscription.count({ where: { userId } }),
+    prisma.taxConfig.count({ where: { userId } }),
+    prisma.taxRecord.count({ where: { userId } }),
   ]);
 
   const recentBookmarks = await prisma.bookmark.findMany({
@@ -35,11 +46,14 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">Welcome back, {session!.user.name || "User"}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         <StatCard title="Bookmarks" value={bookmarkCount} icon={Bookmark} />
         <StatCard title="Notes" value={noteCount} icon={StickyNote} />
         <StatCard title="Total Tasks" value={taskCount} icon={CheckSquare} />
         <StatCard title="Completed" value={completedTasks} icon={CheckCircle2} />
+        <StatCard title="Subscriptions" value={subscriptionCount} icon={Receipt} />
+        <StatCard title="Tax Types" value={taxConfigCount} icon={Calculator} />
+        <StatCard title="Tax Records" value={taxRecordCount} icon={FileText} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
