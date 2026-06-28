@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Home Dashboard
 
-## Getting Started
+Personal home/admin dashboard with QoL features.
 
-First, run the development server:
+## Features
+
+- Bookmarks manager
+- Notes with tags + pinning
+- Task board (kanban)
+- Dashboard with stats
+- Dark/light theme
+- Settings with password change
+
+## Tech
+
+- Next.js 16 (App Router, TypeScript)
+- Tailwind CSS v4 + shadcn/ui
+- Prisma 7 + PostgreSQL (driver adapter `@prisma/adapter-pg`)
+- NextAuth (credentials)
+- Docker + docker-compose
+- Vercel-ready
+
+## Local Dev (Docker)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+# Edit .env: set DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+docker compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App: http://localhost:3000
+pgAdmin: http://localhost:5050
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Default login: `admin@localhost.dev` / `admin123`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local Dev (no Docker)
 
-## Learn More
+Start PostgreSQL separately, then:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+pnpm db:migrate:dev
+pnpm db:seed
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy to Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Push repo to GitHub
+2. Import at vercel.com
+3. Add env vars: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+4. Deploy
 
-## Deploy on Vercel
+## Add New Feature
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Add model to `prisma/schema.prisma` -> `pnpm db:migrate:dev --name <feature>`
+2. Create `lib/validations/<feature>.ts` (zod schema)
+3. Create `app/api/<feature>/route.ts` (GET, POST)
+4. Create `app/api/<feature>/[id]/route.ts` (PUT/PATCH, DELETE)
+5. Create `app/(dashboard)/<feature>/page.tsx` + client component
+6. Add nav item in `components/shared/sidebar.tsx`
+7. Add stat card in `app/(dashboard)/page.tsx`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start dev server |
+| `pnpm build` | Production build |
+| `pnpm db:generate` | Generate Prisma client |
+| `pnpm db:migrate:dev` | Create migration |
+| `pnpm db:migrate:deploy` | Apply migrations |
+| `pnpm db:seed` | Seed DB |
+| `pnpm db:studio` | Prisma Studio |
+| `pnpm db:reset` | Reset DB |
