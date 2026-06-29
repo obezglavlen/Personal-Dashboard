@@ -13,6 +13,7 @@ import {
   Lock,
   Receipt,
   Calculator,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/subscriptions", label: "Subscriptions", icon: Receipt },
+  { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/taxes", label: "Taxes", icon: Calculator },
   { href: "/hasher", label: "Hasher", icon: Lock },
   { href: "/settings", label: "Settings", icon: Settings },

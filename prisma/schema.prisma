@@ -26,6 +26,7 @@ model User {
   subscriptions Subscription[]
   taxConfigs   TaxConfig[]
   taxRecords   TaxRecord[]
+  expenses     Expense[]
 }
 
 model Account {
@@ -113,6 +114,7 @@ model UserSettings {
   id              String  @id @default(cuid())
   userId          String  @unique
   theme           String  @default("system")
+  currency        String  @default("USD")
   dashboardLayout Json?
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -166,4 +168,20 @@ model TaxRecord {
   @@index([userId])
   @@index([type])
   @@index([date])
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  date      DateTime
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
 }
