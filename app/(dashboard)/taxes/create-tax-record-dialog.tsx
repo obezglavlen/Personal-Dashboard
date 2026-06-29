@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { apiPatch, apiPost, fetcher } from "@/lib/api-client";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 
 type RecordType =
 	| "income"
@@ -36,6 +36,7 @@ export type TaxRecord = {
 	type: RecordType;
 	taxConfigId: string | null;
 	taxConfigName: string | null;
+	currency: string | null;
 	date: string;
 	amount: number | null;
 	description: string | null;
@@ -121,9 +122,13 @@ export function CreateTaxRecordDialog({
 		setDescription(initial.description);
 		setBaseRecordId("");
 		setUserTouchedAmount(false);
-		const cfg = configs?.find((c) => c.id === initial.taxConfigId);
-		setCurrency(cfg?.currency ?? "USD");
-	}, [open, initial, configs]);
+		if (mode.kind === "edit") {
+			setCurrency(mode.record.currency ?? "USD");
+		} else {
+			const cfg = configs?.find((c) => c.id === initial.taxConfigId);
+			setCurrency(cfg?.currency ?? "USD");
+		}
+	}, [open, initial, configs, mode]);
 
 	const showAmount = type === "income" || type === "expense";
 
@@ -197,6 +202,9 @@ export function CreateTaxRecordDialog({
 		setTaxConfigId(v);
 		setBaseRecordId("");
 		setUserTouchedAmount(false);
+		// Prefill the currency selector from the chosen tax config.
+		const cfg = configs?.find((c) => c.id === v);
+		if (cfg?.currency) setCurrency(cfg.currency);
 	}
 
 	function onBaseRecordChange(v: string) {
@@ -212,6 +220,7 @@ export function CreateTaxRecordDialog({
 			month: Number(month),
 			year: Number(year),
 			amount: showAmount && amount !== "" ? Number(amount) : null,
+			currency,
 			description: description || null,
 		};
 		try {
@@ -424,7 +433,7 @@ export function CreateTaxRecordDialog({
 										<SelectContent>
 											{CURRENCIES.map((c) => (
 												<SelectItem key={c} value={c}>
-													{c}
+													{currencyLabel(c)}
 												</SelectItem>
 											))}
 										</SelectContent>

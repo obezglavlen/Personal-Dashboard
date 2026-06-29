@@ -159,6 +159,7 @@ model TaxRecord {
   taxConfigId String?
   date        DateTime
   amount      Decimal?   @db.Decimal(10, 2)
+  currency    String     @default("USD")
   description String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
