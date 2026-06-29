@@ -23,6 +23,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { TagInput } from "@/components/ui/tag-input";
 import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 import { convertToBase, formatMoney } from "@/lib/format";
 import { useCurrency } from "@/lib/hooks/use-currency";
@@ -120,6 +121,16 @@ export function SubscriptionClient() {
 	const [editId, setEditId] = useState<string | null>(null);
 
 	const autoCount = (subs ?? []).filter((s) => s.autoExpense).length;
+
+	// Distinct existing categories, for the category autocomplete.
+	const catSuggestions = useMemo(() => {
+		const set = new Map<string, string>();
+		for (const s of subs ?? []) {
+			const c = s.category?.trim();
+			if (c && !set.has(c.toLowerCase())) set.set(c.toLowerCase(), c);
+		}
+		return [...set.values()].sort((a, b) => a.localeCompare(b));
+	}, [subs]);
 
 	function openCreate() {
 		setEditId(null);
@@ -362,13 +373,18 @@ export function SubscriptionClient() {
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="sub-cat">Category (optional)</Label>
-								<Input
-									id="sub-cat"
-									value={form.category}
-									onChange={(e) =>
-										setForm({ ...form, category: e.target.value })
-									}
-								/>
+								<TagInput
+										id="sub-cat"
+										value={form.category ? [form.category] : []}
+										onChange={(next) =>
+											setForm({
+												...form,
+												category: next.length ? next[next.length - 1] : "",
+											})
+										}
+										suggestions={catSuggestions}
+										placeholder="e.g. entertainment"
+									/>
 							</div>
 							<DialogFooter>
 								<Button type="submit">Save</Button>
