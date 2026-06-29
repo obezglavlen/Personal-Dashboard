@@ -164,8 +164,9 @@ export function CreateTaxRecordDialog({
 
     if (configHasRate) {
       if (baseRecord && baseRecord.amount != null) {
+        // rate is stored as a percentage (5 means 5%), so divide by 100
         const computed =
-          Math.round(baseRecord.amount * selectedConfig.rate * 100) / 100;
+          Math.round((baseRecord.amount * selectedConfig.rate) / 100 * 100) / 100;
         setAmount(String(computed));
       } else {
         setAmount("0");
@@ -344,7 +345,7 @@ export function CreateTaxRecordDialog({
                       {baseRecord.amount?.toFixed(2) ?? "0"} × {selectedConfig.rate}% ={" "}
                       <span className="font-medium">
                         {baseRecord.amount != null
-                          ? (Math.round(baseRecord.amount * selectedConfig.rate * 100) / 100).toFixed(2)
+                          ? (Math.round((baseRecord.amount * selectedConfig.rate) / 100 * 100) / 100).toFixed(2)
                           : "0"}{" "}
                         {currency}
                       </span>
