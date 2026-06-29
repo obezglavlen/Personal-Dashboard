@@ -9,19 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
-import { CreateTaxRecordDialog } from "./create-tax-record-dialog";
-
-export type TaxRecord = {
-  id: string;
-  type: "income" | "expense" | "declaration_sent" | "declaration_todo";
-  taxConfigId: string | null;
-  taxConfigName: string | null;
-  date: string;
-  amount: number | null;
-  description: string | null;
-  createdAt: string;
-};
+import { Plus, Trash2, Pencil } from "lucide-react";
+import {
+  CreateTaxRecordDialog,
+  type TaxRecord,
+} from "./create-tax-record-dialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -32,12 +24,17 @@ const TYPE_LABEL: Record<TaxRecord["type"], string> = {
   declaration_todo: "Declaration To Do",
 };
 
+type Mode =
+  | { kind: "create" }
+  | { kind: "edit"; record: TaxRecord };
+
 export function TaxClient() {
   const { data: records, mutate } = useSWR<TaxRecord[]>("/api/tax-records", fetcher);
   const [typeFilter, setTypeFilter] = useState<"all" | TaxRecord["type"]>("all");
   const [configFilter, setConfigFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>({ kind: "create" });
 
   const filtered = useMemo(() => {
     if (!records) return [];
@@ -59,11 +56,21 @@ export function TaxClient() {
     mutate();
   }
 
+  function openCreate() {
+    setMode({ kind: "create" });
+    setOpen(true);
+  }
+
+  function openEdit(r: TaxRecord) {
+    setMode({ kind: "edit", record: r });
+    setOpen(true);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Taxes</h1>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" /> Create
         </Button>
       </div>
@@ -134,9 +141,24 @@ export function TaxClient() {
                   </td>
                   <td className="py-2 text-muted-foreground">{r.description ?? ""}</td>
                   <td className="py-2 text-right">
-                    <Button variant="ghost" size="icon" onClick={() => remove(r.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(r)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(r.id)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -145,7 +167,13 @@ export function TaxClient() {
         </CardContent>
       </Card>
 
-      <CreateTaxRecordDialog open={open} onOpenChange={setOpen} onCreated={mutate} />
+      <CreateTaxRecordDialog
+        open={open}
+        onOpenChange={setOpen}
+        onSaved={mutate}
+        mode={mode}
+        onModeChange={setMode}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,58 +17,167 @@ import {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-type Type = "income" | "expense" | "declaration_sent" | "declaration_todo";
+type RecordType = "income" | "expense" | "declaration_sent" | "declaration_todo";
+
+export type TaxRecord = {
+  id: string;
+  type: RecordType;
+  taxConfigId: string | null;
+  taxConfigName: string | null;
+  date: string;
+  amount: number | null;
+  description: string | null;
+  createdAt: string;
+};
 
 type Config = {
   id: string;
   name: string;
+  rate: number;
   staticAmount: number | null;
   currency: string;
 };
 
+type Mode =
+  | { kind: "create" }
+  | { kind: "edit"; record: TaxRecord };
+
 export function CreateTaxRecordDialog({
   open,
   onOpenChange,
-  onCreated,
+  onSaved,
+  mode,
+  onModeChange,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreated: () => void;
+  onSaved: () => void;
+  mode: Mode;
+  onModeChange: (m: Mode) => void;
 }) {
   const { data: configs } = useSWR<Config[]>("/api/tax-configs", fetcher);
+  const { data: allRecords } = useSWR<TaxRecord[]>(
+    open ? "/api/tax-records" : null,
+    fetcher
+  );
+
   const today = new Date();
-  const [type, setType] = useState<Type>("income");
-  const [taxConfigId, setTaxConfigId] = useState<string>("");
-  const [month, setMonth] = useState<string>(String(today.getMonth() + 1));
-  const [year, setYear] = useState<string>(String(today.getFullYear()));
-  const [amount, setAmount] = useState("");
+  const initial = useMemo(() => {
+    if (mode.kind === "edit") {
+      const r = mode.record;
+      const d = new Date(r.date);
+      return {
+        type: r.type,
+        taxConfigId: r.taxConfigId ?? "",
+        month: String(d.getUTCMonth() + 1),
+        year: String(d.getUTCFullYear()),
+        amount: r.amount != null ? String(r.amount) : "",
+        description: r.description ?? "",
+        baseRecordId: "",
+      };
+    }
+    return {
+      type: "income" as RecordType,
+      taxConfigId: "",
+      month: String(today.getMonth() + 1),
+      year: String(today.getFullYear()),
+      amount: "",
+      description: "",
+      baseRecordId: "",
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  const [type, setType] = useState<RecordType>(initial.type);
+  const [taxConfigId, setTaxConfigId] = useState<string>(initial.taxConfigId);
+  const [month, setMonth] = useState<string>(initial.month);
+  const [year, setYear] = useState<string>(initial.year);
+  const [amount, setAmount] = useState<string>(initial.amount);
+  const [description, setDescription] = useState<string>(initial.description);
+  const [baseRecordId, setBaseRecordId] = useState<string>(initial.baseRecordId);
+  const [userTouchedAmount, setUserTouchedAmount] = useState(false);
   const [currency, setCurrency] = useState("USD");
-  const [description, setDescription] = useState("");
-  const [prefilled, setPrefilled] = useState(false);
+
+  // Re-sync local form state whenever the dialog opens in a new mode (create vs edit)
+  useEffect(() => {
+    if (!open) return;
+    setType(initial.type);
+    setTaxConfigId(initial.taxConfigId);
+    setMonth(initial.month);
+    setYear(initial.year);
+    setAmount(initial.amount);
+    setDescription(initial.description);
+    setBaseRecordId("");
+    setUserTouchedAmount(false);
+    const cfg = configs?.find((c) => c.id === initial.taxConfigId);
+    setCurrency(cfg?.currency ?? "USD");
+  }, [open, initial, configs]);
 
   const showAmount = type === "income" || type === "expense";
+
   const selectedConfig = configs?.find((c) => c.id === taxConfigId);
+  const configHasRate = (selectedConfig?.rate ?? 0) > 0;
 
-  // Pre-fill amount + currency from the chosen tax config's static defaults.
-  // Only fires once per selection so user edits aren't overwritten.
+  // All income records (used to populate the base-record picker)
+  const incomeRecords = useMemo(
+    () => (allRecords ?? []).filter((r) => r.type === "income"),
+    [allRecords]
+  );
+
+  // Income records scoped to the selected tax config (preferred pre-fill source)
+  const scopedIncome = useMemo(
+    () => incomeRecords.filter((r) => r.taxConfigId === taxConfigId),
+    [incomeRecords, taxConfigId]
+  );
+
+  // Candidate "base" income record: prefer explicit pick, else scoped+latest, else any+latest
+  const defaultBaseRecord = useMemo(() => {
+    if (!allRecords) return null;
+    const sorted = (xs: TaxRecord[]) =>
+      [...xs].sort((a, b) =>
+        (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) ||
+        b.createdAt.localeCompare(a.createdAt)
+      );
+    if (scopedIncome.length > 0) return sorted(scopedIncome)[0];
+    if (incomeRecords.length > 0) return sorted(incomeRecords)[0];
+    return null;
+  }, [allRecords, scopedIncome, incomeRecords]);
+
+  const effectiveBaseRecordId = baseRecordId || defaultBaseRecord?.id || "";
+  const baseRecord = useMemo(
+    () => incomeRecords.find((r) => r.id === effectiveBaseRecordId) ?? null,
+    [incomeRecords, effectiveBaseRecordId]
+  );
+
+  // When the user picks a tax config that has a rate, pre-fill amount =
+  // (baseRecord.amount × rate / 100). Don't overwrite if the user already
+  // typed something for the current selection.
   useEffect(() => {
-    if (!selectedConfig) {
-      setPrefilled(false);
-      return;
+    if (mode.kind !== "create") return;
+    if (!showAmount) return;
+    if (userTouchedAmount) return;
+    if (!selectedConfig) return;
+    if (!configHasRate) return;
+    if (baseRecord && baseRecord.amount != null) {
+      const computed =
+        Math.round(baseRecord.amount * selectedConfig.rate * 100) / 100;
+      setAmount(String(computed));
+    } else {
+      setAmount("0");
     }
-    if (!prefilled) {
-      if (selectedConfig.staticAmount != null) {
-        setAmount(String(selectedConfig.staticAmount));
-      }
-      setCurrency(selectedConfig.currency || "USD");
-      setPrefilled(true);
-    }
-  }, [selectedConfig, prefilled]);
+    setCurrency(selectedConfig.currency || "USD");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taxConfigId, effectiveBaseRecordId, type, mode.kind]);
 
-  // When user switches tax config, allow re-prefilling on the next selection
   function onConfigChange(v: string) {
     setTaxConfigId(v);
-    setPrefilled(false);
+    setBaseRecordId("");
+    setUserTouchedAmount(false);
+  }
+
+  function onBaseRecordChange(v: string) {
+    setBaseRecordId(v);
+    setUserTouchedAmount(false);
   }
 
   async function submit(e: React.FormEvent) {
@@ -81,39 +190,46 @@ export function CreateTaxRecordDialog({
       amount: showAmount && amount !== "" ? Number(amount) : null,
       description: description || null,
     };
-    const res = await fetch("/api/tax-records", {
-      method: "POST",
+    const url =
+      mode.kind === "edit" ? `/api/tax-records/${mode.record.id}` : "/api/tax-records";
+    const method = mode.kind === "edit" ? "PATCH" : "POST";
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      toast.error("Failed to create record", {
-        description: JSON.stringify(err),
-      });
+      toast.error(
+        mode.kind === "edit" ? "Failed to update record" : "Failed to create record",
+        { description: JSON.stringify(err) }
+      );
       return;
     }
-    toast.success("Record created");
-    setAmount("");
-    setDescription("");
-    setTaxConfigId("");
-    setCurrency("USD");
-    setPrefilled(false);
+    toast.success(mode.kind === "edit" ? "Record updated" : "Record created");
+    onSaved();
+    onModeChange({ kind: "create" });
     onOpenChange(false);
-    onCreated();
   }
 
+  const title = mode.kind === "edit" ? "Edit Record" : "Create Record";
+  const submitLabel = mode.kind === "edit" ? "Save" : "Create";
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) onModeChange({ kind: "create" }); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create Record</DialogTitle>
-          <DialogDescription>Income, expense, or declaration entry.</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {mode.kind === "edit"
+              ? "Update this tax record."
+              : "Income, expense, or declaration entry."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label>Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as Type)}>
+            <Select value={type} onValueChange={(v) => setType(v as RecordType)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="income">Income</SelectItem>
@@ -133,18 +249,11 @@ export function CreateTaxRecordDialog({
                 {configs?.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
-                    {c.staticAmount != null
-                      ? ` — ${c.staticAmount.toFixed(2)} ${c.currency}`
-                      : ""}
+                    {c.rate > 0 ? ` (${c.rate}%)` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {selectedConfig?.staticAmount != null && (
-              <p className="text-xs text-muted-foreground">
-                Pre-filled from {selectedConfig.name}: {selectedConfig.staticAmount.toFixed(2)} {selectedConfig.currency}
-              </p>
-            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -175,28 +284,84 @@ export function CreateTaxRecordDialog({
           </div>
 
           {showAmount && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="rec-amount">Amount</Label>
-                <Input
-                  id="rec-amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
+            <>
+              {mode.kind === "create" && configHasRate && (
+                <div className="space-y-2">
+                  <Label>Base income record</Label>
+                  <Select value={effectiveBaseRecordId} onValueChange={onBaseRecordChange}>
+                    <SelectTrigger><SelectValue placeholder="(auto: latest income)" /></SelectTrigger>
+                    <SelectContent>
+                      {scopedIncome.length > 0 && (
+                        <>
+                          <SelectItem value="_section_scoped" disabled>
+                            — Same tax type —
+                          </SelectItem>
+                          {scopedIncome.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.date.slice(0, 7)} · {r.amount?.toFixed(2) ?? "—"} {r.description ? `· ${r.description}` : ""}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {incomeRecords.length > scopedIncome.length && (
+                        <>
+                          <SelectItem value="_section_all" disabled>
+                            — Any tax type —
+                          </SelectItem>
+                          {incomeRecords.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.date.slice(0, 7)} · {r.amount?.toFixed(2) ?? "—"} · {r.taxConfigName ?? "—"}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {incomeRecords.length === 0 && (
+                        <SelectItem value="_none" disabled>
+                          (no income records — amount will be 0)
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {baseRecord && selectedConfig && (
+                    <p className="text-xs text-muted-foreground">
+                      {baseRecord.amount?.toFixed(2) ?? "0"} × {selectedConfig.rate}% ={" "}
+                      <span className="font-medium">
+                        {baseRecord.amount != null
+                          ? (Math.round(baseRecord.amount * selectedConfig.rate * 100) / 100).toFixed(2)
+                          : "0"}{" "}
+                        {currency}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-2">
+                  <Label htmlFor="rec-amount">Amount</Label>
+                  <Input
+                    id="rec-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={amount}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      setUserTouchedAmount(true);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rec-currency">Currency</Label>
+                  <Input
+                    id="rec-currency"
+                    maxLength={3}
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="rec-currency">Currency</Label>
-                <Input
-                  id="rec-currency"
-                  maxLength={3}
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                />
-              </div>
-            </div>
+            </>
           )}
 
           <div className="space-y-2">
@@ -210,7 +375,7 @@ export function CreateTaxRecordDialog({
           </div>
 
           <DialogFooter>
-            <Button type="submit">Create</Button>
+            <Button type="submit">{submitLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
