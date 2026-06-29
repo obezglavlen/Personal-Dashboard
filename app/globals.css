@@ -30,9 +30,9 @@
   --destructive: oklch(0.5954 0.2344 23.9586);
   --destructive-foreground: oklch(1.0000 0 0);
 
-  --border: oklch(0.7200 0 0);
-    --input: oklch(0.9700 0 0);
-    --ring: oklch(0.2264 0 0);
+  --border: oklch(0.4500 0 0);
+  --input: oklch(0.9700 0 0);
+  --ring: oklch(0.2264 0 0);
 
   --chart-1: oklch(0.9667 0.0148 251.1556);
   --chart-2: oklch(0.7422 0.1166 260.2000);
@@ -100,8 +100,8 @@
   --destructive: oklch(0.6152 0.1657 26.9800);
   --destructive-foreground: oklch(0 0 0);
 
-  --border: oklch(0.5200 0 0);
-    --input: oklch(0.1200 0 0);
+  --border: oklch(0.7200 0 0);
+  --input: oklch(0.1800 0 0);
   --ring: oklch(0.6152 0.1657 26.9800);
 
   --chart-1: oklch(0.7152 0.1485 58.8324);
@@ -215,14 +215,15 @@
     border-color: var(--border);
   }
 
-  /* Form controls — explicit 3px borders so the brutalist 2077 theme
-       has clearly visible input/select/textarea edges against the
+  /* Form controls — explicit 3px solid borders so the brutalist 2077
+       theme has unmistakable input/select/textarea edges against the
        pure-white / pure-black backgrounds. */
-    input,
-    textarea,
-    select {
-      border-width: 3px;
-    }
+  input,
+  textarea,
+  select {
+    border-width: 3px;
+    border-style: solid;
+  }
 
   body {
     background-color: var(--background);
@@ -241,11 +242,11 @@
   /* Prevent iOS Safari from auto-zooming into form fields on focus. */
   /* Without this, every <Input> on iPhone would jump-zoom to ~120% on tap. */
   @media (max-width: 640px) {
-    input,
-    textarea,
-    select {
+  input,
+  textarea,
+  select {
       font-size: 16px;
-    }
+  }
   }
 
   /* Touch-target floor — Apple HIG / Material both recommend ≥44px.
@@ -255,13 +256,13 @@
     [role="button"],
     a {
       min-height: 44px;
-    }
+  }
     /* Icon-only buttons still need their hit-target bumped even if
        the visible icon is smaller. */
     button:has(> svg:only-child),
     [role="button"]:has(> svg:only-child) {
       min-width: 44px;
-    }
+  }
   }
 
   /* Hide horizontal page-level scrollbar that shows up because of iOS
