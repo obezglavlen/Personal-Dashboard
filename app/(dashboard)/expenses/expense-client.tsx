@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +40,7 @@ export function ExpenseClient() {
 	const [mode, setMode] = useState<Mode>({ kind: "create" });
 	const [pageSize, setPageSize] = useState(10);
 	const [page, setPage] = useState(0);
+	const [selected, setSelected] = useState<Set<string>>(new Set());
 
 	// Distinct tags across all expenses, for autocomplete suggestions.
 	const allTags = useMemo(() => {
@@ -79,14 +80,51 @@ export function ExpenseClient() {
 		clampedPage * pageSize + pageSize,
 	);
 
-	const total = useMemo(
+	const pageIds = paged.map((r) => r.id);
+	const allPageSelected =
+		pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+	const somePageSelected = pageIds.some((id) => selected.has(id));
+
+	// Count + total are computed over filtered rows only, so records hidden by
+	// a filter never sneak into the sum even if still selected. Amounts are
+	// converted to the global currency before summing.
+	const selectedCount = useMemo(
+		() => filtered.filter((r) => selected.has(r.id)).length,
+		[filtered, selected],
+	);
+	const selectedTotal = useMemo(
 		() =>
 			filtered.reduce(
-				(sum, r) => sum + convertToBase(r.amount, r.currency, currency, rates),
+				(sum, r) =>
+					selected.has(r.id)
+						? sum + convertToBase(r.amount, r.currency, currency, rates)
+						: sum,
 				0,
 			),
-		[filtered, currency, rates],
+		[filtered, selected, currency, rates],
 	);
+
+	function toggle(id: string) {
+		setSelected((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}
+
+	function togglePage() {
+		setSelected((prev) => {
+			const next = new Set(prev);
+			if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+			else pageIds.forEach((id) => next.add(id));
+			return next;
+		});
+	}
+
+	function clearSelection() {
+		setSelected(new Set());
+	}
 
 	async function remove(id: string) {
 		try {
@@ -148,13 +186,21 @@ export function ExpenseClient() {
 				</CardContent>
 			</Card>
 
-			{filtered.length > 0 && (
+			{/* Selection total — appears only when ≥1 record selected */}
+			{selectedCount > 0 && (
 				<Card className="border-primary/50 bg-primary/5">
-					<CardContent className="flex items-center justify-between py-3">
-						<span className="text-sm font-medium">{filtered.length} shown</span>
-						<span className="text-base font-bold tabular-nums">
-							Total: {formatMoney(total, currency)}
+					<CardContent className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+						<span className="text-sm font-medium">
+							{selectedCount} selected
 						</span>
+						<div className="flex items-center gap-4">
+							<span className="text-base font-bold tabular-nums">
+								Total: {formatMoney(selectedTotal, currency)}
+							</span>
+							<Button variant="ghost" size="sm" onClick={clearSelection}>
+								Clear
+							</Button>
+						</div>
 					</CardContent>
 				</Card>
 			)}
@@ -165,6 +211,14 @@ export function ExpenseClient() {
 					<table className="w-full text-sm">
 						<thead className="text-left text-xs text-muted-foreground">
 							<tr>
+								<th className="w-8 pb-2">
+									<Checkbox
+										checked={allPageSelected}
+										indeterminate={somePageSelected && !allPageSelected}
+										onChange={togglePage}
+										ariaLabel="Select all on page"
+									/>
+								</th>
 								<th className="pb-2">Date</th>
 								<th className="pb-2">Name</th>
 								<th className="pb-2 text-right">Amount</th>
@@ -176,7 +230,7 @@ export function ExpenseClient() {
 							{filtered.length === 0 && (
 								<tr>
 									<td
-										colSpan={5}
+										colSpan={6}
 										className="py-6 text-center text-muted-foreground"
 									>
 										No expenses. Use the Create button above.
@@ -185,6 +239,13 @@ export function ExpenseClient() {
 							)}
 							{paged.map((r) => (
 								<tr key={r.id} className="border-t">
+									<td className="py-2">
+										<Checkbox
+											checked={selected.has(r.id)}
+											onChange={() => toggle(r.id)}
+											ariaLabel="Select expense"
+										/>
+									</td>
 									<td className="py-2">{r.date.slice(0, 10)}</td>
 									<td className="py-2 font-medium">{r.name}</td>
 									<td className="py-2 text-right tabular-nums">
@@ -245,6 +306,11 @@ export function ExpenseClient() {
 							<div className="flex items-start justify-between gap-2">
 								<div className="min-w-0 flex-1">
 									<div className="flex flex-wrap items-center gap-2">
+										<Checkbox
+											checked={selected.has(r.id)}
+											onChange={() => toggle(r.id)}
+											ariaLabel="Select expense"
+										/>
 										<span className="text-sm font-semibold">{r.name}</span>
 										<span className="text-xs text-muted-foreground">
 											{r.date.slice(0, 10)}
@@ -304,6 +370,33 @@ export function ExpenseClient() {
 				tagSuggestions={allTags}
 			/>
 		</div>
+	);
+}
+
+function Checkbox({
+	checked,
+	indeterminate,
+	onChange,
+	ariaLabel,
+}: {
+	checked: boolean;
+	indeterminate?: boolean;
+	onChange: () => void;
+	ariaLabel: string;
+}) {
+	const ref = useRef<HTMLInputElement>(null);
+	useEffect(() => {
+		if (ref.current) ref.current.indeterminate = !!indeterminate && !checked;
+	}, [indeterminate, checked]);
+	return (
+		<input
+			ref={ref}
+			type="checkbox"
+			checked={checked}
+			onChange={onChange}
+			aria-label={ariaLabel}
+			className="h-4 w-4 cursor-pointer rounded border-input accent-primary"
+		/>
 	);
 }
 
