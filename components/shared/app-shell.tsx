@@ -78,7 +78,7 @@ export function AppShell({ headerRight, children }: AppShellProps) {
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
 
 
-        <main className="flex-1 overflow-y-auto px-4 py-4 pb-safe sm:px-6 sm:py-6">
+        <main className="flex-1 overflow-y-auto px-4 pt-4 pb-[max(env(safe-area-inset-bottom),2rem)] sm:px-6 sm:pt-6 sm:pb-[max(env(safe-area-inset-bottom),2.5rem)]">
           {children}
         </main>
       </div>
