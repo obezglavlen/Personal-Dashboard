@@ -31,7 +31,7 @@
   --destructive-foreground: oklch(1.0000 0 0);
 
   --border: oklch(0.4500 0 0);
-  --input: oklch(0.9700 0 0);
+  --input: oklch(0.9200 0 0);
   --ring: oklch(0.2264 0 0);
 
   --chart-1: oklch(0.9667 0.0148 251.1556);
@@ -101,7 +101,7 @@
   --destructive-foreground: oklch(0 0 0);
 
   --border: oklch(0.7200 0 0);
-  --input: oklch(0.1800 0 0);
+  --input: oklch(0.2800 0 0);
   --ring: oklch(0.6152 0.1657 26.9800);
 
   --chart-1: oklch(0.7152 0.1485 58.8324);
@@ -215,15 +215,6 @@
     border-color: var(--border);
   }
 
-  /* Form controls — explicit 3px solid borders so the brutalist 2077
-       theme has unmistakable input/select/textarea edges against the
-       pure-white / pure-black backgrounds. */
-  input,
-  textarea,
-  select {
-    border-width: 3px;
-    border-style: solid;
-  }
 
   body {
     background-color: var(--background);
