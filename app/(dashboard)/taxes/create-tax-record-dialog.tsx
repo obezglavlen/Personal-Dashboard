@@ -255,12 +255,20 @@ export function CreateTaxRecordDialog({
               <SelectTrigger><SelectValue placeholder="(none)" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="">(none)</SelectItem>
-                {configs?.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                    {c.rate > 0 ? ` (${c.rate}%)` : ""}
-                  </SelectItem>
-                ))}
+                {configs?.map((c) => {
+                  const parts: string[] = [];
+                  if (c.rate > 0) parts.push(`${c.rate}%`);
+                  if (c.staticAmount != null) {
+                    parts.push(`${c.staticAmount.toFixed(2)} ${c.currency}`);
+                  }
+                  const suffix = parts.length > 0 ? ` (${parts.join(" · ")})` : "";
+                  return (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                      {suffix}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
