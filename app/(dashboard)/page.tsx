@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { IncomeExpenseChart } from "./income-expense-chart";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -87,6 +88,8 @@ export default async function DashboardPage() {
           description="All time"
         />
       </div>
+
+      <IncomeExpenseChart />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
