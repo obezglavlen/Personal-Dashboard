@@ -8,11 +8,12 @@ export default function TaxesLayout({ children }: { children: React.ReactNode })
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="space-y-4">
-      <div className="flex-1 min-w-0">{children}</div>
+    <div className="space-y-4 lg:flex lg:items-start lg:gap-6 lg:space-y-0">
+      {/* Main content — takes remaining width on lg+, full width below */}
+      <div className="min-w-0 flex-1 lg:order-1">{children}</div>
 
-      {/* Desktop sidebar — appears on the right at lg+ */}
-      <aside className="hidden lg:block">
+      {/* Desktop sidebar — fixed-width column on the right at lg+ */}
+      <aside className="hidden w-full shrink-0 lg:block lg:w-80 lg:order-2">
         <TaxSidebar />
       </aside>
 
