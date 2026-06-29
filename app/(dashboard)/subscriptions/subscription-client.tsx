@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, RefreshCw, Trash2, Zap } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Trash2, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiPost } from "@/lib/api-client";
@@ -13,7 +13,6 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,8 +117,29 @@ export function SubscriptionClient() {
 	const [open, setOpen] = useState(false);
 	const [posting, setPosting] = useState(false);
 	const [form, setForm] = useState<Form>(EMPTY);
+	const [editId, setEditId] = useState<string | null>(null);
 
 	const autoCount = (subs ?? []).filter((s) => s.autoExpense).length;
+
+	function openCreate() {
+		setEditId(null);
+		setForm({ ...EMPTY, currency });
+		setOpen(true);
+	}
+
+	function openEdit(s: Subscription) {
+		setEditId(s.id);
+		setForm({
+			name: s.name,
+			price: String(s.price),
+			period: s.period,
+			startDate: s.startDate.slice(0, 10),
+			category: s.category ?? "",
+			currency: s.currency,
+			autoExpense: s.autoExpense,
+		});
+		setOpen(true);
+	}
 
 	async function toggleAuto(s: Subscription) {
 		try {
@@ -160,13 +180,16 @@ export function SubscriptionClient() {
 
 	async function onSubmit(e: React.FormEvent) {
 		e.preventDefault();
+		const body = { ...form, price: Number(form.price) };
 		try {
-			await create({ ...form, price: Number(form.price) });
-			toast.success("Subscription added");
+			if (editId) await update(editId, body);
+			else await create(body);
+			toast.success(editId ? "Subscription updated" : "Subscription added");
 			setForm(EMPTY);
+			setEditId(null);
 			setOpen(false);
 		} catch (err) {
-			toast.error("Failed to add subscription", {
+			toast.error(editId ? "Failed to update subscription" : "Failed to add subscription", {
 				description: err instanceof Error ? err.message : undefined,
 			});
 		}
@@ -246,22 +269,21 @@ export function SubscriptionClient() {
 						{posting ? "Posting…" : "Post due now"}
 					</Button>
 				)}
+				<Button className="w-full sm:w-auto" onClick={openCreate}>
+					<Plus className="mr-2 h-4 w-4" /> Add Subscription
+				</Button>
 				<Dialog
 					open={open}
 					onOpenChange={(v) => {
-						// Default a fresh form's currency to the user's global currency.
-						if (v) setForm((f) => (f.name === "" ? { ...f, currency } : f));
 						setOpen(v);
+						if (!v) setEditId(null);
 					}}
 				>
-					<DialogTrigger asChild>
-						<Button className="w-full sm:w-auto">
-							<Plus className="mr-2 h-4 w-4" /> Add Subscription
-						</Button>
-					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>New Subscription</DialogTitle>
+							<DialogTitle>
+								{editId ? "Edit Subscription" : "New Subscription"}
+							</DialogTitle>
 							<DialogDescription>Track a recurring expense.</DialogDescription>
 						</DialogHeader>
 						<form onSubmit={onSubmit} className="space-y-4">
@@ -433,6 +455,7 @@ export function SubscriptionClient() {
 					view={view}
 					onDelete={deleteSub}
 					onToggleAuto={toggleAuto}
+					onEdit={openEdit}
 					baseCurrency={currency}
 					rates={rates}
 				/>
@@ -442,6 +465,7 @@ export function SubscriptionClient() {
 					view={view}
 					onDelete={deleteSub}
 					onToggleAuto={toggleAuto}
+					onEdit={openEdit}
 					baseCurrency={currency}
 					rates={rates}
 				/>
@@ -456,6 +480,7 @@ function Group({
 	view,
 	onDelete,
 	onToggleAuto,
+	onEdit,
 	baseCurrency,
 	rates,
 }: {
@@ -464,6 +489,7 @@ function Group({
 	view: ViewMode;
 	onDelete: (id: string) => void;
 		onToggleAuto: (s: Subscription) => void;
+		onEdit: (s: Subscription) => void;
 	baseCurrency: string;
 	rates: Record<string, number>;
 }) {
@@ -484,6 +510,14 @@ function Group({
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm">{s.name}</CardTitle>
 							<div className="flex items-center gap-1">
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => onEdit(s)}
+										aria-label="Edit subscription"
+									>
+										<Pencil className="h-3 w-3" />
+									</Button>
 									<Button
 										variant="ghost"
 										size="icon"
