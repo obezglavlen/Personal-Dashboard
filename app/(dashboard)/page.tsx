@@ -21,8 +21,12 @@ import {
 import { authOptions } from "@/lib/auth";
 import { resolveLayout } from "@/lib/dashboard/widgets";
 import { prisma } from "@/lib/db";
+import { BudgetWidget } from "./budget-widget";
 import { DashboardGrid } from "./dashboard-grid";
+import { DueTasksWidget } from "./due-tasks-widget";
 import { IncomeExpenseChart } from "./income-expense-chart";
+import { NetWorthWidget } from "./net-worth-widget";
+import { RenewalsWidget } from "./renewals-widget";
 
 export default async function DashboardPage() {
 	const session = await getServerSession(authOptions);
@@ -109,7 +113,11 @@ export default async function DashboardPage() {
 				/>
 			</div>
 		),
+		"net-worth": <NetWorthWidget />,
 		"income-expense": <IncomeExpenseChart />,
+		"budget-status": <BudgetWidget />,
+		"upcoming-renewals": <RenewalsWidget />,
+		"due-tasks": <DueTasksWidget />,
 		"recent-bookmarks": (
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0">

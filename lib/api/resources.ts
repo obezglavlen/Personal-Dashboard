@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
+import { accountSchema } from "@/lib/validations/account";
 import { bookmarkSchema } from "@/lib/validations/bookmark";
+import { budgetSchema } from "@/lib/validations/budget";
 import { expenseSchema } from "@/lib/validations/expense";
+import { goalSchema } from "@/lib/validations/goal";
 import { noteSchema } from "@/lib/validations/note";
 import { subscriptionSchema } from "@/lib/validations/subscription";
 import { taskSchema } from "@/lib/validations/task";
@@ -33,6 +36,8 @@ export const serializeSubscription = (s: Row) => ({
 	startDate: iso(s.startDate),
 	category: s.category,
 	currency: s.currency,
+	autoExpense: s.autoExpense,
+	lastPostedAt: s.lastPostedAt ? iso(s.lastPostedAt) : null,
 	createdAt: iso(s.createdAt),
 	updatedAt: iso(s.updatedAt),
 });
@@ -151,6 +156,83 @@ export const taxRecordHandlers = crudHandlers({
 			year !== undefined && {
 				date: new Date(Date.UTC(year, month - 1, 1)),
 			}),
+	}),
+});
+
+export const serializeBudget = (b: Row) => ({
+	id: b.id,
+	userId: b.userId,
+	name: b.name,
+	amount: num(b.amount),
+	currency: b.currency,
+	period: b.period,
+	tags: b.tags,
+	createdAt: iso(b.createdAt),
+	updatedAt: iso(b.updatedAt),
+});
+
+export const serializeAccount = (a: Row) => ({
+	id: a.id,
+	userId: a.userId,
+	name: a.name,
+	type: a.type,
+	balance: num(a.balance),
+	currency: a.currency,
+	createdAt: iso(a.createdAt),
+	updatedAt: iso(a.updatedAt),
+});
+
+export const serializeGoal = (g: Row) => ({
+	id: g.id,
+	userId: g.userId,
+	name: g.name,
+	target: num(g.target),
+	current: num(g.current),
+	currency: g.currency,
+	createdAt: iso(g.createdAt),
+	updatedAt: iso(g.updatedAt),
+});
+
+export const accountHandlers = crudHandlers({
+	delegate: prisma.financialAccount,
+	createSchema: accountSchema,
+	updateSchema: accountSchema.partial(),
+	orderBy: [{ createdAt: "desc" }],
+	serialize: serializeAccount,
+	toCreateData: ({ currency, type, ...rest }, userId) => ({
+		...rest,
+		currency: currency ?? "USD",
+		type: type ?? "cash",
+		userId,
+	}),
+});
+
+export const goalHandlers = crudHandlers({
+	delegate: prisma.goal,
+	createSchema: goalSchema,
+	updateSchema: goalSchema.partial(),
+	orderBy: [{ createdAt: "desc" }],
+	serialize: serializeGoal,
+	toCreateData: ({ currency, current, ...rest }, userId) => ({
+		...rest,
+		currency: currency ?? "USD",
+		current: current ?? 0,
+		userId,
+	}),
+});
+
+export const budgetHandlers = crudHandlers({
+	delegate: prisma.budget,
+	createSchema: budgetSchema,
+	updateSchema: budgetSchema.partial(),
+	orderBy: [{ createdAt: "desc" }],
+	serialize: serializeBudget,
+	toCreateData: ({ currency, tags, period, ...rest }, userId) => ({
+		...rest,
+		currency: currency ?? "USD",
+		tags: tags ?? [],
+		period: period ?? "monthly",
+		userId,
 	}),
 });
 

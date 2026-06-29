@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Menu } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CommandPalette } from "./command-palette";
 import { Sidebar } from "./sidebar";
 
 interface AppShellProps {
@@ -20,6 +21,19 @@ interface AppShellProps {
  */
 export function AppShell({ headerRight, children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Global Cmd/Ctrl+K opens the command palette from anywhere.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground lg:h-screen lg:flex-row lg:overflow-hidden">
@@ -44,9 +58,25 @@ export function AppShell({ headerRight, children }: AppShellProps) {
           </div>
           {/* On desktop this headerRight takes the full right side */}
           <div className="flex items-center justify-end gap-2 lg:ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPaletteOpen(true)}
+              className="gap-2 text-muted-foreground"
+              aria-label="Open command palette"
+            >
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline">Search</span>
+              <kbd className="hidden rounded border border-border bg-muted px-1.5 text-xs sm:inline">
+                ⌘K
+              </kbd>
+            </Button>
             {headerRight}
           </div>
         </header>
+
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+
 
         <main className="flex-1 overflow-y-auto px-4 py-4 pb-safe sm:px-6 sm:py-6">
           {children}

@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { apiPost } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,6 +38,7 @@ export type Subscription = {
 	startDate: string;
 	category: string | null;
 	currency: string;
+	autoExpense: boolean;
 	createdAt: string;
 };
 
@@ -47,6 +49,7 @@ type Form = {
 	startDate: string;
 	category: string;
 	currency: string;
+	autoExpense: boolean;
 };
 
 const EMPTY: Form = {
@@ -56,6 +59,7 @@ const EMPTY: Form = {
 	startDate: new Date().toISOString().slice(0, 10),
 	category: "",
 	currency: "USD",
+	autoExpense: false,
 };
 
 type SortKey = "cost-desc" | "cost-asc" | "name-asc" | "date-desc";
@@ -105,12 +109,49 @@ export function SubscriptionClient() {
 		items: subs,
 		isLoading,
 		create,
+		update,
 		remove,
+		mutate,
 	} = useResource<Subscription>("/api/subscriptions");
 	const { currency } = useCurrency();
 	const { rates } = useRates(currency);
 	const [open, setOpen] = useState(false);
+	const [posting, setPosting] = useState(false);
 	const [form, setForm] = useState<Form>(EMPTY);
+
+	const autoCount = (subs ?? []).filter((s) => s.autoExpense).length;
+
+	async function toggleAuto(s: Subscription) {
+		try {
+			await update(s.id, { autoExpense: !s.autoExpense });
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : "Failed to update subscription",
+			);
+		}
+	}
+
+	async function postDue() {
+		setPosting(true);
+		try {
+			const r = await apiPost<{ posted: number }>(
+				"/api/subscriptions/post-due",
+				{},
+			);
+			await mutate();
+			toast.success(
+				r.posted > 0
+					? `Posted ${r.posted} renewal${r.posted === 1 ? "" : "s"} to Expenses`
+					: "No renewals due",
+			);
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : "Failed to post renewals",
+			);
+		} finally {
+			setPosting(false);
+		}
+	}
 	const [sort, setSort] = useState<SortKey>("cost-desc");
 	const [view, setView] = useState<ViewMode>("monthly");
 	const [asOf, setAsOf] = useState<string>(
@@ -191,7 +232,20 @@ export function SubscriptionClient() {
 					Track recurring expenses and see past or projected spend.
 				</p>
 			</div>
-			<div className="flex justify-end">
+			<div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+				{autoCount > 0 && (
+					<Button
+						variant="outline"
+						onClick={postDue}
+						disabled={posting}
+						className="w-full sm:w-auto"
+					>
+						<RefreshCw
+							className={`mr-2 h-4 w-4 ${posting ? "animate-spin" : ""}`}
+						/>
+						{posting ? "Posting…" : "Post due now"}
+					</Button>
+				)}
 				<Dialog
 					open={open}
 					onOpenChange={(v) => {
@@ -378,6 +432,7 @@ export function SubscriptionClient() {
 					items={monthly}
 					view={view}
 					onDelete={deleteSub}
+					onToggleAuto={toggleAuto}
 					baseCurrency={currency}
 					rates={rates}
 				/>
@@ -386,6 +441,7 @@ export function SubscriptionClient() {
 					items={annual}
 					view={view}
 					onDelete={deleteSub}
+					onToggleAuto={toggleAuto}
 					baseCurrency={currency}
 					rates={rates}
 				/>
@@ -399,6 +455,7 @@ function Group({
 	items,
 	view,
 	onDelete,
+	onToggleAuto,
 	baseCurrency,
 	rates,
 }: {
@@ -406,6 +463,7 @@ function Group({
 	items: Subscription[];
 	view: ViewMode;
 	onDelete: (id: string) => void;
+		onToggleAuto: (s: Subscription) => void;
 	baseCurrency: string;
 	rates: Record<string, number>;
 }) {
@@ -425,13 +483,20 @@ function Group({
 					<Card key={s.id}>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm">{s.name}</CardTitle>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => onDelete(s.id)}
-							>
-								<Trash2 className="h-3 w-3" />
-							</Button>
+							<div className="flex items-center gap-1">
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => onToggleAuto(s)}
+										aria-label={s.autoExpense ? "Disable auto-post" : "Enable auto-post"}
+										title={s.autoExpense ? "Auto-posting renewals to Expenses" : "Auto-post off"}
+									>
+										<Zap className={`h-3 w-3 ${s.autoExpense ? "fill-current text-primary" : "text-muted-foreground"}`} />
+									</Button>
+									<Button variant="ghost" size="icon" onClick={() => onDelete(s.id)}>
+										<Trash2 className="h-3 w-3" />
+									</Button>
+								</div>
 						</CardHeader>
 						<CardContent className="pt-0">
 							<p className="text-xs text-muted-foreground">

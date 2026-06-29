@@ -27,6 +27,9 @@ model User {
   taxConfigs   TaxConfig[]
   taxRecords   TaxRecord[]
   expenses     Expense[]
+  budgets      Budget[]
+  financialAccounts FinancialAccount[]
+  goals             Goal[]
 }
 
 model Account {
@@ -128,6 +131,10 @@ model Subscription {
   startDate DateTime @default(now())
   category  String?
   currency  String   @default("USD")
+  // When true, renewals are auto-posted as Expense rows. `lastPostedAt` records
+  // the most recent renewal date already posted, so posting stays idempotent.
+  autoExpense  Boolean   @default(false)
+  lastPostedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -185,4 +192,49 @@ model Expense {
 
   @@index([userId])
   @@index([userId, date])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  amount    Decimal  @db.Decimal(10, 2)
+  currency  String   @default("USD")
+  period    String   @default("monthly")
+  // Expenses whose tags intersect these count toward the budget. Empty = all expenses.
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model FinancialAccount {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  type      String   @default("cash")
+  // Balance may be negative for liabilities (loans, credit cards).
+  balance   Decimal  @db.Decimal(14, 2)
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Goal {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  target    Decimal  @db.Decimal(14, 2)
+  current   Decimal  @default(0) @db.Decimal(14, 2)
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
