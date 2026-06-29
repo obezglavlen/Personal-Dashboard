@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
+import { toast } from "sonner";
+import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +22,6 @@ type Task = {
   createdAt: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 const statusConfig = {
   todo: { label: "To Do", icon: Circle, color: "text-muted-foreground" },
   in_progress: { label: "In Progress", icon: Clock, color: "text-blue-500" },
@@ -39,7 +38,7 @@ type Priority = "low" | "medium" | "high";
 type Status = "todo" | "in_progress" | "done";
 
 export function TaskClient() {
-  const { data: tasks, mutate } = useSWR<Task[]>("/api/tasks", fetcher);
+  const { items: tasks, create, update, remove } = useResource<Task>("/api/tasks");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<{
     title: string;
@@ -57,30 +56,29 @@ export function TaskClient() {
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
+    try {
+      await create(form);
       setForm({ title: "", description: "", status: "todo", priority: "medium", dueDate: "" });
       setShowForm(false);
-      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add task");
     }
   }
 
   async function updateStatus(id: string, status: string) {
-    await fetch(`/api/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    mutate();
+    try {
+      await update(id, { status });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update task");
+    }
   }
 
   async function deleteTask(id: string) {
-    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-    mutate();
+    try {
+      await remove(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete task");
+    }
   }
 
   const columns = ["todo", "in_progress", "done"] as const;

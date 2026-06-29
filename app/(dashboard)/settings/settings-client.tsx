@@ -10,6 +10,9 @@ import {
 import { User, Lock, Palette } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
+import { apiGet, apiPut } from "@/lib/api-client";
+
+type SettingsData = { name: string | null; email: string | null; theme: string };
 
 export function SettingsClient() {
   const { setTheme } = useTheme();
@@ -20,44 +23,35 @@ export function SettingsClient() {
   const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
+    apiGet<SettingsData>("/api/settings")
       .then((data) => {
         setName(data.name || "");
         setEmail(data.email || "");
         setThemeState(data.theme || "system");
-      });
+      })
+      .catch(() => toast.error("Failed to load settings"));
   }, []);
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, theme }),
-    });
-    if (res.ok) {
+    try {
+      await apiPut("/api/settings", { name, theme });
       setTheme(theme);
       toast.success("Profile saved");
-    } else {
-      toast.error("Failed to save profile");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save profile");
     }
   }
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    if (res.ok) {
+    try {
+      await apiPut("/api/settings", { currentPassword, newPassword });
       setCurrentPassword("");
       setNewPassword("");
       toast.success("Password changed");
-    } else {
-      const data = await res.json();
-      toast.error(data.error || "Error");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
     }
   }
 

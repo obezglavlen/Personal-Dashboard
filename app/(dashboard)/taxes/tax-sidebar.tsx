@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
 import { toast } from "sonner";
+import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +17,10 @@ export type TaxConfig = {
   currency: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 export function TaxSidebar() {
-  const { data: configs, mutate } = useSWR<TaxConfig[]>("/api/tax-configs", fetcher);
+  const { items: configs, create, remove: removeConfig } = useResource<TaxConfig>(
+    "/api/tax-configs"
+  );
   const [name, setName] = useState("");
   const [rate, setRate] = useState("");
   const [staticAmount, setStaticAmount] = useState("");
@@ -34,27 +34,26 @@ export function TaxSidebar() {
       staticAmount: staticAmount === "" ? null : Number(staticAmount),
       currency: currency.toUpperCase(),
     };
-    const res = await fetch("/api/tax-configs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      toast.error("Failed to add tax", { description: err.error ?? JSON.stringify(err) });
-      return;
+    try {
+      await create(body);
+      setName("");
+      setRate("");
+      setStaticAmount("");
+      setCurrency("USD");
+      toast.success("Tax added");
+    } catch (err) {
+      toast.error("Failed to add tax", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     }
-    setName("");
-    setRate("");
-    setStaticAmount("");
-    setCurrency("USD");
-    toast.success("Tax added");
-    mutate();
   }
 
   async function remove(id: string) {
-    await fetch(`/api/tax-configs/${id}`, { method: "DELETE" });
-    mutate();
+    try {
+      await removeConfig(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete tax");
+    }
   }
 
   return (

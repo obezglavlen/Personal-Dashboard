@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
+import { toast } from "sonner";
+import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,10 +26,8 @@ type Bookmark = {
   createdAt: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 export function BookmarkClient() {
-  const { data: bookmarks, mutate } = useSWR<Bookmark[]>("/api/bookmarks", fetcher);
+  const { items: bookmarks, create, remove } = useResource<Bookmark>("/api/bookmarks");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ url: "", title: "", category: "general" });
   const [search, setSearch] = useState("");
@@ -36,21 +35,21 @@ export function BookmarkClient() {
 
   async function addBookmark(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/bookmarks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
+    try {
+      await create(form);
       setForm({ url: "", title: "", category: "general" });
       setShowForm(false);
-      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add bookmark");
     }
   }
 
   async function deleteBookmark(id: string) {
-    await fetch(`/api/bookmarks/${id}`, { method: "DELETE" });
-    mutate();
+    try {
+      await remove(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete bookmark");
+    }
   }
 
   const categories = Array.from(

@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import useSWR from "swr";
 import { toast } from "sonner";
+import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +26,6 @@ export type Subscription = {
   currency: string;
   createdAt: string;
 };
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Form = {
   name: string;
@@ -82,9 +80,8 @@ function viewLabel(mode: ViewMode): string {
 }
 
 export function SubscriptionClient() {
-  const { data: subs, mutate, isLoading } = useSWR<Subscription[]>(
-    "/api/subscriptions",
-    fetcher
+  const { items: subs, isLoading, create, remove } = useResource<Subscription>(
+    "/api/subscriptions"
   );
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Form>(EMPTY);
@@ -94,25 +91,24 @@ export function SubscriptionClient() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/subscriptions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, price: Number(form.price) }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      toast.error("Failed to add subscription", { description: JSON.stringify(err) });
-      return;
+    try {
+      await create({ ...form, price: Number(form.price) });
+      toast.success("Subscription added");
+      setForm(EMPTY);
+      setOpen(false);
+    } catch (err) {
+      toast.error("Failed to add subscription", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     }
-    toast.success("Subscription added");
-    setForm(EMPTY);
-    setOpen(false);
-    mutate();
   }
 
   async function deleteSub(id: string) {
-    await fetch(`/api/subscriptions/${id}`, { method: "DELETE" });
-    mutate();
+    try {
+      await remove(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete subscription");
+    }
   }
 
   const sorted = useMemo(() => {

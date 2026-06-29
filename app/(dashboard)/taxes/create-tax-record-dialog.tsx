@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
+import { apiPatch, apiPost, fetcher } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +15,6 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type RecordType = "income" | "expense" | "declaration_sent" | "declaration_todo";
 
@@ -200,26 +199,22 @@ export function CreateTaxRecordDialog({
       amount: showAmount && amount !== "" ? Number(amount) : null,
       description: description || null,
     };
-    const url =
-      mode.kind === "edit" ? `/api/tax-records/${mode.record.id}` : "/api/tax-records";
-    const method = mode.kind === "edit" ? "PATCH" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+    try {
+      if (mode.kind === "edit") {
+        await apiPatch(`/api/tax-records/${mode.record.id}`, body);
+      } else {
+        await apiPost("/api/tax-records", body);
+      }
+      toast.success(mode.kind === "edit" ? "Record updated" : "Record created");
+      onSaved();
+      onModeChange({ kind: "create" });
+      onOpenChange(false);
+    } catch (err) {
       toast.error(
         mode.kind === "edit" ? "Failed to update record" : "Failed to create record",
-        { description: JSON.stringify(err) }
+        { description: err instanceof Error ? err.message : undefined }
       );
-      return;
     }
-    toast.success(mode.kind === "edit" ? "Record updated" : "Record created");
-    onSaved();
-    onModeChange({ kind: "create" });
-    onOpenChange(false);
   }
 
   const title = mode.kind === "edit" ? "Edit Record" : "Create Record";

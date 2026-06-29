@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
+import { toast } from "sonner";
+import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,10 +25,10 @@ type Note = {
   updatedAt: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 export function NoteClient() {
-  const { data: notes, mutate } = useSWR<Note[]>("/api/notes", fetcher);
+  const { items: notes, create, update, remove } = useResource<Note>("/api/notes", {
+    updateMethod: "PUT",
+  });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", content: "", tags: [] as string[], pinned: false });
@@ -59,40 +60,36 @@ export function NoteClient() {
 
   async function saveNote(e: React.FormEvent) {
     e.preventDefault();
-    const url = editingId ? `/api/notes/${editingId}` : "/api/notes";
-    const method = editingId ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    if (res.ok) {
+    try {
+      if (editingId) await update(editingId, form);
+      else await create(form);
       setShowForm(false);
       setEditingId(null);
       setForm({ title: "", content: "", tags: [], pinned: false });
-      mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save note");
     }
   }
 
   async function deleteNote(id: string) {
-    await fetch(`/api/notes/${id}`, { method: "DELETE" });
-    mutate();
+    try {
+      await remove(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete note");
+    }
   }
 
   async function togglePin(note: Note) {
-    await fetch(`/api/notes/${note.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      await update(note.id, {
         title: note.title,
         content: note.content,
         tags: note.tags,
         pinned: !note.pinned,
-      }),
-    });
-    mutate();
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update note");
+    }
   }
 
   const filtered = (notes ?? []).filter((n) => {

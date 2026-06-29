@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import useSWR from "swr";
+import { toast } from "sonner";
+import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,8 +16,6 @@ import {
   type TaxRecord,
 } from "./create-tax-record-dialog";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 const TYPE_LABEL: Record<TaxRecord["type"], string> = {
   income: "Income",
   expense: "Expense",
@@ -29,7 +28,9 @@ type Mode =
   | { kind: "edit"; record: TaxRecord };
 
 export function TaxClient() {
-  const { data: records, mutate } = useSWR<TaxRecord[]>("/api/tax-records", fetcher);
+  const { items: records, mutate, remove: removeRecord } = useResource<TaxRecord>(
+    "/api/tax-records"
+  );
   const [typeFilter, setTypeFilter] = useState<"all" | TaxRecord["type"]>("all");
   const [configFilter, setConfigFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -52,8 +53,11 @@ export function TaxClient() {
   }, [records, typeFilter, configFilter, search]);
 
   async function remove(id: string) {
-    await fetch(`/api/tax-records/${id}`, { method: "DELETE" });
-    mutate();
+    try {
+      await removeRecord(id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete record");
+    }
   }
 
   function openCreate() {
@@ -247,10 +251,7 @@ function TaxConfigFilterSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const { data } = useSWR<{ id: string; name: string }[]>(
-    "/api/tax-configs",
-    fetcher
-  );
+  const { items: data } = useResource<{ id: string; name: string }>("/api/tax-configs");
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger id="tax-config-filter" className="w-full sm:w-48">
