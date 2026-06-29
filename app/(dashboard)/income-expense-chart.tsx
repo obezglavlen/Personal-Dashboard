@@ -114,12 +114,23 @@ export function IncomeExpenseChart() {
               <YAxis tick={{ fontSize: 12 }} width={56} />
               <Tooltip
                 formatter={(v) => Number(v).toFixed(2)}
+                cursor={{ fill: "var(--foreground)", fillOpacity: 0.06 }}
                 contentStyle={{
-                  background: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
+                  background: "var(--popover)",
+                  color: "var(--popover-foreground)",
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
                   fontSize: 12,
+                  padding: "8px 12px",
+                  boxShadow:
+                    "0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)",
                 }}
+                labelStyle={{
+                  color: "var(--popover-foreground)",
+                  fontWeight: 600,
+                  marginBottom: 4,
+                }}
+                itemStyle={{ color: "var(--popover-foreground)", padding: 0 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="income" name="Income" fill="#22c55e" radius={[2, 2, 0, 0]} />
