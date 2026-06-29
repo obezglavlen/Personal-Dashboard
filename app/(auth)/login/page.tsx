@@ -8,9 +8,9 @@ export default async function LoginPage() {
   if (session) redirect("/");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50">
-      <div className="w-full max-w-md p-8">
-        <div className="mb-8 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4 py-8 pt-safe pb-safe">
+      <div className="w-full max-w-md p-0 sm:p-8">
+        <div className="mb-6 text-center sm:mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Home Dashboard</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to access your dashboard

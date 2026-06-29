@@ -62,13 +62,13 @@ export function SettingsClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account, theme, and security.</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">Manage your account, theme, and security.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -94,13 +94,14 @@ export function SettingsClient() {
                 <Label className="flex items-center gap-2">
                   <Palette className="h-3 w-3" /> Theme
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {(["light", "dark", "system"] as const).map((t) => (
                     <Button
                       key={t}
                       type="button"
                       variant={theme === t ? "default" : "outline"}
                       onClick={() => { setThemeState(t); setTheme(t); }}
+                      className="flex-1 sm:flex-none"
                     >
                       {t.charAt(0).toUpperCase() + t.slice(1)}
                     </Button>

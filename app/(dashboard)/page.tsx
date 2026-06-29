@@ -46,15 +46,20 @@ export default async function DashboardPage() {
   const completionRate = taskCount > 0 ? Math.round((completedTasks / taskCount) * 100) : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
           Welcome back, {session!.user.name || "User"}.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Stat grid: 2 cols on phones (so they don't look lost as a single
+          column), 2 on sm, 3 on lg, 4 on xl. xl still gets xl:grid-cols-4
+          but xl:grid-cols-7 was reported in memory as the live value —
+          only 6 StatCards here so go 2-2-3-3-4-6 = 6 spans; simpler to
+          keep a clean responsive ramp. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
         <StatCard title="Bookmarks" value={bookmarkCount} icon={Bookmark} description="Saved links" />
         <StatCard title="Notes" value={noteCount} icon={StickyNote} description="Across all tags" />
         <StatCard

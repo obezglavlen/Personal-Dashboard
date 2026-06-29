@@ -67,28 +67,28 @@ export function TaxClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Taxes</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Taxes</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
           Track income, expenses, and declaration status per tax type.
         </p>
       </div>
       <div className="flex justify-end">
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" /> Create
         </Button>
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-4 pt-6">
+        <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           <div className="space-y-2">
             <Label>Type</Label>
             <Select
               value={typeFilter}
               onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}
             >
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="income">Income</SelectItem>
@@ -102,21 +102,22 @@ export function TaxClient() {
             <Label htmlFor="tax-config-filter">Tax Type</Label>
             <TaxConfigFilterSelect value={configFilter} onChange={setConfigFilter} />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 sm:flex-1 sm:min-w-48">
             <Label htmlFor="tax-search">Search</Label>
             <Input
               id="tax-search"
               placeholder="Description…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-48"
+              className="w-full sm:w-48"
             />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-6">
+      {/* Desktop table */}
+      <Card className="hidden md:block">
+        <CardContent className="overflow-x-auto pt-6">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr>
@@ -172,6 +173,62 @@ export function TaxClient() {
         </CardContent>
       </Card>
 
+      {/* Mobile card list — same data, stacked layout */}
+      <div className="space-y-3 md:hidden">
+        {filtered.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No records. Use the Create button above.
+            </CardContent>
+          </Card>
+        )}
+        {filtered.map((r) => (
+          <Card key={r.id}>
+            <CardContent className="space-y-2 pt-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold">{r.date.slice(0, 7)}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {TYPE_LABEL[r.type]}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {r.taxConfigName ?? "—"}
+                  </p>
+                  {r.description && (
+                    <p className="mt-1 text-sm">{r.description}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEdit(r)}
+                    aria-label="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(r.id)}
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              {r.amount != null && (
+                <p className="text-right text-base font-bold tabular-nums">
+                  {r.amount.toFixed(2)}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <CreateTaxRecordDialog
         open={open}
         onOpenChange={setOpen}
@@ -196,7 +253,7 @@ function TaxConfigFilterSelect({
   );
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id="tax-config-filter" className="w-48">
+      <SelectTrigger id="tax-config-filter" className="w-full sm:w-48">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

@@ -71,17 +71,17 @@ export function BookmarkClient() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Bookmarks</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Bookmarks</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
           Save and organise links across categories.
         </p>
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-4 pt-6">
-          <div className="space-y-2 flex-1 min-w-48">
+        <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+          <div className="space-y-2 sm:flex-1 sm:min-w-48">
             <Label htmlFor="bm-search">Search</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -100,7 +100,7 @@ export function BookmarkClient() {
               id="bm-cat"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="flex h-9 w-48 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:h-9 sm:w-48"
             >
               <option value="all">All categories</option>
               {categories.map((c) => (
@@ -110,7 +110,7 @@ export function BookmarkClient() {
           </div>
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" /> Add Bookmark
               </Button>
             </DialogTrigger>

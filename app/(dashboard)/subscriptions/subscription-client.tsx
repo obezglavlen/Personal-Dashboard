@@ -142,17 +142,17 @@ export function SubscriptionClient() {
   if (!subs) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Subscriptions</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Subscriptions</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
           Track recurring expenses and see past or projected spend.
         </p>
       </div>
       <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> Add Subscription
             </Button>
           </DialogTrigger>
@@ -215,18 +215,18 @@ export function SubscriptionClient() {
 
       {/* Totals */}
       <Card>
-        <CardContent className="flex flex-wrap items-baseline justify-between gap-4 pt-6">
+        <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Total per {viewLabel(view)}</p>
-            <p className="text-3xl font-bold">{currency} {totalAtView.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground sm:text-sm">Total per {viewLabel(view)}</p>
+            <p className="text-2xl font-bold tabular-nums sm:text-3xl">{currency} {totalAtView.toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               {isFuture ? "Projected spend by" : "Spent as of"} {asOf}
             </p>
-            <p className="text-3xl font-bold">{currency} {cumulative.toFixed(2)}</p>
+            <p className="text-2xl font-bold tabular-nums sm:text-3xl">{currency} {cumulative.toFixed(2)}</p>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Monthly equivalent: {currency} {totalMonthly.toFixed(2)}
           </p>
         </CardContent>
@@ -234,11 +234,11 @@ export function SubscriptionClient() {
 
       {/* Filter line */}
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-4 pt-6">
+        <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
           <div className="space-y-2">
             <Label htmlFor="sub-sort">Sort by</Label>
             <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-              <SelectTrigger id="sub-sort" className="w-48"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="sub-sort" className="w-full sm:w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="cost-desc">Cost (high → low)</SelectItem>
                 <SelectItem value="cost-asc">Cost (low → high)</SelectItem>
@@ -250,7 +250,7 @@ export function SubscriptionClient() {
           <div className="space-y-2">
             <Label htmlFor="sub-view">View as</Label>
             <Select value={view} onValueChange={(v) => setView(v as ViewMode)}>
-              <SelectTrigger id="sub-view" className="w-48"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="sub-view" className="w-full sm:w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="daily">Per day</SelectItem>
                 <SelectItem value="monthly">Per month</SelectItem>
@@ -262,13 +262,13 @@ export function SubscriptionClient() {
           <div className="space-y-2">
             <Label htmlFor="sub-asof">As of date</Label>
             <Input id="sub-asof" type="date" value={asOf}
-              onChange={(e) => setAsOf(e.target.value)} className="w-48" />
+              onChange={(e) => setAsOf(e.target.value)} className="w-full sm:w-48" />
           </div>
         </CardContent>
       </Card>
 
       {/* Grouped lists */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         <Group title={`Monthly (${monthly.length})`} items={monthly} view={view} onDelete={deleteSub} />
         <Group title={`Annual (${annual.length})`} items={annual} view={view} onDelete={deleteSub} />
       </div>

@@ -106,15 +106,15 @@ export function NoteClient() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Notes</h1>
-        <p className="text-muted-foreground">Jot down ideas, snippets, and todos.</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Notes</h1>
+        <p className="text-sm text-muted-foreground sm:text-base">Jot down ideas, snippets, and todos.</p>
       </div>
 
       <Card>
-        <CardContent className="flex flex-wrap items-end gap-4 pt-6">
-          <div className="space-y-2 flex-1 min-w-48">
+        <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+          <div className="space-y-2 sm:flex-1 sm:min-w-48">
             <Label htmlFor="note-search">Search</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -129,7 +129,7 @@ export function NoteClient() {
           </div>
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
-              <Button onClick={startNew}>
+              <Button onClick={startNew} className="sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" /> New Note
               </Button>
             </DialogTrigger>

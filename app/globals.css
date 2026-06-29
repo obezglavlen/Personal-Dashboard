@@ -220,4 +220,64 @@
     font-family: var(--font-sans), Arial, Helvetica, sans-serif;
     letter-spacing: var(--tracking-normal);
   }
+
+  /* --- Mobile adaptation --------------------------------------------- */
+  /* Respect iOS notch / home-bar / Android cutouts */
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  /* Prevent iOS Safari from auto-zooming into form fields on focus. */
+  /* Without this, every <Input> on iPhone would jump-zoom to ~120% on tap. */
+  @media (max-width: 640px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
+  /* Touch-target floor — Apple HIG / Material both recommend ≥44px.
+     Only apply on coarse pointers so desktop stays compact. */
+  @media (pointer: coarse) {
+    button,
+    [role="button"],
+    a {
+      min-height: 44px;
+    }
+    /* Icon-only buttons still need their hit-target bumped even if
+       the visible icon is smaller. */
+    button:has(> svg:only-child),
+    [role="button"]:has(> svg:only-child) {
+      min-width: 44px;
+    }
+  }
+
+  /* Hide horizontal page-level scrollbar that shows up because of iOS
+     rubber-banding, but keep vertical scrolling natural. */
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
+/* --- Utility helpers used across the dashboard ----------------------- */
+@layer utilities {
+  /* Use iOS safe-area insets in any padded container. */
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .pl-safe {
+    padding-left: max(env(safe-area-inset-left), 0px);
+  }
+  .pr-safe {
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+
+  /* Hide the scrollbar but keep scroll (mobile filter bars, etc.) */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
