@@ -44,12 +44,15 @@ type Expense = {
 // Implicit tag applied to tax-type expense records in the dashboard filter.
 const TAX_TAG = "taxes";
 
-const PERIODS: { label: string; months: number }[] = [
-	{ label: "3M", months: 3 },
-	{ label: "6M", months: 6 },
-	{ label: "1Y", months: 12 },
-	{ label: "2Y", months: 24 },
-	{ label: "6Y", months: 72 },
+// Day-unit periods bucket by day; month-unit periods bucket by month.
+const PERIODS: { label: string; unit: "day" | "month"; count: number }[] = [
+	{ label: "7D", unit: "day", count: 7 },
+	{ label: "1M", unit: "day", count: 30 },
+	{ label: "3M", unit: "month", count: 3 },
+	{ label: "6M", unit: "month", count: 6 },
+	{ label: "1Y", unit: "month", count: 12 },
+	{ label: "2Y", unit: "month", count: 24 },
+	{ label: "6Y", unit: "month", count: 72 },
 ];
 
 const MONTHS = [
@@ -72,7 +75,9 @@ export function IncomeExpenseChart() {
 	const { items: expenses } = useResource<Expense>("/api/expenses");
 	const { currency } = useCurrency();
 	const { rates } = useRates(currency);
-	const [months, setMonths] = useState(12);
+	// Default to 1Y (index into PERIODS).
+	const [periodIdx, setPeriodIdx] = useState(4);
+	const period = PERIODS[periodIdx];
 	const [tagFilter, setTagFilter] = useState<string[]>([]);
 
 	// Distinct tags across expenses, for the search-bar autocomplete. Tax
@@ -93,10 +98,12 @@ export function IncomeExpenseChart() {
 	}, [expenses, records]);
 
 	const data = useMemo(() => {
-		// Build contiguous month buckets ending in the current month so months
-		// with no records still render as gaps rather than collapsing.
+		// Build contiguous buckets ending at the current day/month so empty
+		// periods still render as gaps rather than collapsing. Day-unit periods
+		// bucket by calendar day; month-unit periods by month.
 		const now = new Date();
-		const multiYear = months > 12;
+		const byDay = period.unit === "day";
+		const multiYear = !byDay && period.count > 12;
 		const buckets: {
 			key: string;
 			label: string;
@@ -105,14 +112,23 @@ export function IncomeExpenseChart() {
 		}[] = [];
 		const index = new Map<string, number>();
 
-		for (let i = months - 1; i >= 0; i--) {
-			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const key = `${d.getFullYear()}-${d.getMonth()}`;
-			const label = multiYear
-				? `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
-				: MONTHS[d.getMonth()];
-			index.set(key, buckets.length);
-			buckets.push({ key, label, income: 0, expense: 0 });
+		// Bucket key for a date, matching the active period's unit.
+		const keyOf = (d: Date) =>
+			byDay
+				? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+				: `${d.getFullYear()}-${d.getMonth()}`;
+
+		for (let i = period.count - 1; i >= 0; i--) {
+			const d = byDay
+				? new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+				: new Date(now.getFullYear(), now.getMonth() - i, 1);
+			const label = byDay
+				? `${MONTHS[d.getMonth()]} ${d.getDate()}`
+				: multiYear
+					? `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+					: MONTHS[d.getMonth()];
+			index.set(keyOf(d), buckets.length);
+			buckets.push({ key: keyOf(d), label, income: 0, expense: 0 });
 		}
 
 		const selected = new Set(tagFilter.map((t) => t.toLowerCase()));
@@ -125,8 +141,7 @@ export function IncomeExpenseChart() {
 			if (r.type === "expense" && selected.size > 0 && !selected.has(TAX_TAG)) {
 				continue;
 			}
-			const d = new Date(r.date);
-			const slot = index.get(`${d.getFullYear()}-${d.getMonth()}`);
+			const slot = index.get(keyOf(new Date(r.date)));
 			if (slot == null) continue;
 			buckets[slot][r.type] += convertToBase(
 				r.amount,
@@ -144,8 +159,7 @@ export function IncomeExpenseChart() {
 			) {
 				continue;
 			}
-			const d = new Date(e.date);
-			const slot = index.get(`${d.getFullYear()}-${d.getMonth()}`);
+			const slot = index.get(keyOf(new Date(e.date)));
 			if (slot == null) continue;
 			buckets[slot].expense += convertToBase(
 				e.amount,
@@ -156,7 +170,7 @@ export function IncomeExpenseChart() {
 		}
 
 		return buckets;
-	}, [records, expenses, months, tagFilter, currency, rates]);
+	}, [records, expenses, period, tagFilter, currency, rates]);
 
 	return (
 		<Card>
@@ -164,16 +178,17 @@ export function IncomeExpenseChart() {
 				<div>
 					<CardTitle>Income vs Expense</CardTitle>
 					<CardDescription>
-						Monthly totals over the selected period ({currency})
+						{period.unit === "day" ? "Daily" : "Monthly"} totals over the
+						selected period ({currency})
 					</CardDescription>
 				</div>
 				<div className="flex flex-wrap gap-1">
-					{PERIODS.map((p) => (
+					{PERIODS.map((p, i) => (
 						<Button
-							key={p.months}
-							variant={months === p.months ? "default" : "outline"}
+							key={p.label}
+							variant={periodIdx === i ? "default" : "outline"}
 							size="sm"
-							onClick={() => setMonths(p.months)}
+							onClick={() => setPeriodIdx(i)}
 						>
 							{p.label}
 						</Button>

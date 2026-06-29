@@ -14,7 +14,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 import { useResource } from "@/lib/hooks/use-resource";
 
 export type TaxConfig = {
@@ -116,7 +116,7 @@ export function TaxSidebar() {
 							<SelectContent>
 								{CURRENCIES.map((c) => (
 									<SelectItem key={c} value={c}>
-										{c}
+										{currencyLabel(c)}
 									</SelectItem>
 								))}
 							</SelectContent>

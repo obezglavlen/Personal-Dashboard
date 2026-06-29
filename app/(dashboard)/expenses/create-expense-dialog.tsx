@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { TagInput } from "@/components/ui/tag-input";
 import { apiPatch, apiPost } from "@/lib/api-client";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 import { useCurrency } from "@/lib/hooks/use-currency";
 
 export type Expense = {
@@ -179,7 +179,7 @@ export function CreateExpenseDialog({
 								<SelectContent>
 									{CURRENCIES.map((c) => (
 										<SelectItem key={c} value={c}>
-											{c}
+											{currencyLabel(c)}
 										</SelectItem>
 									))}
 								</SelectContent>

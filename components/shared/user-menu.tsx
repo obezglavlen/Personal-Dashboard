@@ -18,7 +18,7 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CURRENCIES } from "@/lib/currencies";
+import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 import { useCurrency } from "@/lib/hooks/use-currency";
 
 export function UserMenu({
@@ -54,7 +54,7 @@ export function UserMenu({
 						<Coins className="mr-2 h-4 w-4" />
 						Currency
 						<span className="ml-auto pl-2 text-xs text-muted-foreground">
-							{currency}
+							{currencyLabel(currency)}
 						</span>
 					</DropdownMenuSubTrigger>
 					<DropdownMenuPortal>
@@ -67,7 +67,7 @@ export function UserMenu({
 							>
 								{CURRENCIES.map((c) => (
 									<DropdownMenuRadioItem key={c} value={c}>
-										{c}
+										{currencyLabel(c)}
 									</DropdownMenuRadioItem>
 								))}
 							</DropdownMenuRadioGroup>
