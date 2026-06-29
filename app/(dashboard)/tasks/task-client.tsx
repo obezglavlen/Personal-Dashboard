@@ -287,6 +287,7 @@ export function TaskClient() {
 		mutate,
 	} = useResource<Task>("/api/tasks");
 	const [showForm, setShowForm] = useState(false);
+	const [savingAdd, setSavingAdd] = useState(false);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const [form, setForm] = useState<TaskFormValues>(EMPTY_FORM);
 	const [editId, setEditId] = useState<string | null>(null);
@@ -300,12 +301,15 @@ export function TaskClient() {
 
 	async function addTask(e: React.FormEvent) {
 		e.preventDefault();
+		setSavingAdd(true);
 		try {
 			await create(form);
 			setForm(EMPTY_FORM);
 			setShowForm(false);
 		} catch (err) {
 			toast.error(err instanceof Error ? err.message : "Failed to add task");
+		} finally {
+			setSavingAdd(false);
 		}
 	}
 
@@ -388,26 +392,39 @@ export function TaskClient() {
 			</div>
 			<div className="flex justify-end">
 				<Button
-					onClick={() => setShowForm(!showForm)}
+					onClick={() => {
+						setForm(EMPTY_FORM);
+						setShowForm(true);
+					}}
 					className="w-full sm:w-auto"
 				>
 					<Plus className="mr-2 h-4 w-4" /> Add Task
 				</Button>
 			</div>
 
-			{showForm && (
-				<Card>
-					<CardHeader>
-						<CardTitle>New Task</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<form onSubmit={addTask} className="space-y-4">
-							<TaskFields form={form} setForm={setForm} idPrefix="new" />
-							<Button type="submit">Save</Button>
-						</form>
-					</CardContent>
-				</Card>
-			)}
+			<Dialog open={showForm} onOpenChange={setShowForm}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>New Task</DialogTitle>
+					</DialogHeader>
+					<form onSubmit={addTask} className="space-y-4">
+						<TaskFields form={form} setForm={setForm} idPrefix="new" />
+						<DialogFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => setShowForm(false)}
+								disabled={savingAdd}
+							>
+								Cancel
+							</Button>
+							<Button type="submit" disabled={savingAdd}>
+								{savingAdd ? "Saving…" : "Add task"}
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
 
 			<DndContext
 				sensors={sensors}
