@@ -149,22 +149,31 @@ export function CreateTaxRecordDialog({
     [incomeRecords, effectiveBaseRecordId]
   );
 
-  // When the user picks a tax config that has a rate, pre-fill amount =
-  // (baseRecord.amount × rate / 100). Don't overwrite if the user already
-  // typed something for the current selection.
+  // Pre-fill amount in create mode. Priority:
+  //   1. config has rate > 0  -> baseRecord.amount × rate / 100
+  //      (fallback 0 if no income records)
+  //   2. config has staticAmount -> use staticAmount directly
+  //      (fallback 0)
+  //   3. nothing to fill from -> leave the field alone
+  // Don't overwrite if the user already typed something for the current selection.
   useEffect(() => {
     if (mode.kind !== "create") return;
     if (!showAmount) return;
     if (userTouchedAmount) return;
     if (!selectedConfig) return;
-    if (!configHasRate) return;
-    if (baseRecord && baseRecord.amount != null) {
-      const computed =
-        Math.round(baseRecord.amount * selectedConfig.rate * 100) / 100;
-      setAmount(String(computed));
-    } else {
-      setAmount("0");
+
+    if (configHasRate) {
+      if (baseRecord && baseRecord.amount != null) {
+        const computed =
+          Math.round(baseRecord.amount * selectedConfig.rate * 100) / 100;
+        setAmount(String(computed));
+      } else {
+        setAmount("0");
+      }
+    } else if (selectedConfig.staticAmount != null) {
+      setAmount(String(selectedConfig.staticAmount));
     }
+
     setCurrency(selectedConfig.currency || "USD");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taxConfigId, effectiveBaseRecordId, type, mode.kind]);
