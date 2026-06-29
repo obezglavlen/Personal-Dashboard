@@ -30,6 +30,7 @@ type TaxRecord = {
 	type: "income" | "expense" | "declaration_sent" | "declaration_todo";
 	date: string;
 	amount: number | null;
+	currency: string | null;
 };
 
 type Expense = {
@@ -39,6 +40,9 @@ type Expense = {
 	date: string;
 	tags: string[];
 };
+
+// Implicit tag applied to tax-type expense records in the dashboard filter.
+const TAX_TAG = "taxes";
 
 const PERIODS: { label: string; months: number }[] = [
 	{ label: "3M", months: 3 },
@@ -71,7 +75,9 @@ export function IncomeExpenseChart() {
 	const [months, setMonths] = useState(12);
 	const [tagFilter, setTagFilter] = useState<string[]>([]);
 
-	// Distinct tags across expenses, for the search-bar autocomplete.
+	// Distinct tags across expenses, for the search-bar autocomplete. Tax
+	// records of type "expense" have no tags of their own, so they carry an
+	// implicit TAX_TAG ("taxes") that participates in filtering like any other.
 	const allTags = useMemo(() => {
 		const set = new Map<string, string>();
 		for (const e of expenses ?? []) {
@@ -80,8 +86,11 @@ export function IncomeExpenseChart() {
 				if (!set.has(k)) set.set(k, t);
 			}
 		}
+		if ((records ?? []).some((r) => r.type === "expense" && r.amount != null)) {
+			set.set(TAX_TAG, TAX_TAG);
+		}
 		return [...set.values()].sort((a, b) => a.localeCompare(b));
-	}, [expenses]);
+	}, [expenses, records]);
 
 	const data = useMemo(() => {
 		// Build contiguous month buckets ending in the current month so months
@@ -106,18 +115,28 @@ export function IncomeExpenseChart() {
 			buckets.push({ key, label, income: 0, expense: 0 });
 		}
 
-		// Tax records: income + expense.
+		const selected = new Set(tagFilter.map((t) => t.toLowerCase()));
+
+		// Tax records: income is never tag-filtered; expense carries the implicit
+		// TAX_TAG so a tag filter only counts it when "taxes" is selected.
 		for (const r of records ?? []) {
 			if (r.amount == null) continue;
 			if (r.type !== "income" && r.type !== "expense") continue;
+			if (r.type === "expense" && selected.size > 0 && !selected.has(TAX_TAG)) {
+				continue;
+			}
 			const d = new Date(r.date);
 			const slot = index.get(`${d.getFullYear()}-${d.getMonth()}`);
 			if (slot == null) continue;
-			buckets[slot][r.type] += r.amount;
+			buckets[slot][r.type] += convertToBase(
+				r.amount,
+				r.currency ?? currency,
+				currency,
+				rates,
+			);
 		}
 
 		// Standalone expenses, filtered by selected tags (any-match; none ⇒ all).
-		const selected = new Set(tagFilter.map((t) => t.toLowerCase()));
 		for (const e of expenses ?? []) {
 			if (
 				selected.size > 0 &&

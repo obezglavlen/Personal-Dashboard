@@ -107,6 +107,7 @@ export const taxRecordHandlers = crudHandlers({
 		type: r.type,
 		taxConfigId: r.taxConfigId,
 		taxConfigName: r.taxConfig?.name ?? null,
+		currency: r.taxConfig?.currency ?? null,
 		date: iso(r.date),
 		amount: numOrNull(r.amount),
 		description: r.description,
