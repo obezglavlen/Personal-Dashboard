@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,9 @@ export function TaxClient() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>({ kind: "create" });
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(0);
 
   const filtered = useMemo(() => {
     if (!records) return [];
@@ -51,6 +54,61 @@ export function TaxClient() {
       return true;
     });
   }, [records, typeFilter, configFilter, search]);
+
+  // Reset to first page when filters or page size change.
+  useEffect(() => {
+    setPage(0);
+  }, [typeFilter, configFilter, search, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const clampedPage = Math.min(page, totalPages - 1);
+  const paged = filtered.slice(
+    clampedPage * pageSize,
+    clampedPage * pageSize + pageSize
+  );
+
+  const pageIds = paged.map((r) => r.id);
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const somePageSelected = pageIds.some((id) => selected.has(id));
+
+  // Total + count are computed over filtered rows only, so records hidden
+  // by a filter never sneak into the sum even if still selected.
+  const selectedCount = useMemo(
+    () => filtered.filter((r) => selected.has(r.id)).length,
+    [filtered, selected]
+  );
+  const selectedTotal = useMemo(
+    () =>
+      filtered.reduce(
+        (sum, r) =>
+          selected.has(r.id) && r.amount != null ? sum + r.amount : sum,
+        0
+      ),
+    [filtered, selected]
+  );
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function togglePage() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
 
   async function remove(id: string) {
     try {
@@ -119,37 +177,71 @@ export function TaxClient() {
         </CardContent>
       </Card>
 
+      {/* Selection total — appears only when ≥1 record selected */}
+      {selectedCount > 0 && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm font-medium">
+              {selectedCount} selected
+            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-base font-bold tabular-nums">
+                Total: {selectedTotal.toFixed(2)}
+              </span>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Desktop table */}
       <Card className="hidden md:block">
         <CardContent className="overflow-x-auto pt-6">
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr>
+                <th className="w-8 pb-2">
+                  <Checkbox
+                    checked={allPageSelected}
+                    indeterminate={somePageSelected && !allPageSelected}
+                    onChange={togglePage}
+                    ariaLabel="Select all on page"
+                  />
+                </th>
                 <th className="pb-2">Date</th>
                 <th className="pb-2">Type</th>
                 <th className="pb-2">Tax</th>
                 <th className="pb-2 text-right">Amount</th>
-                <th className="pb-2">Description</th>
+                <th className="pb-2 pl-6">Description</th>
                 <th className="pb-2"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-6 text-center text-muted-foreground">
                     No records. Use the Create button above.
                   </td>
                 </tr>
               )}
-              {filtered.map((r) => (
+              {paged.map((r) => (
                 <tr key={r.id} className="border-t">
+                  <td className="py-2">
+                    <Checkbox
+                      checked={selected.has(r.id)}
+                      onChange={() => toggle(r.id)}
+                      ariaLabel="Select record"
+                    />
+                  </td>
                   <td className="py-2">{r.date.slice(0, 7)}</td>
                   <td className="py-2">{TYPE_LABEL[r.type]}</td>
                   <td className="py-2">{r.taxConfigName ?? "—"}</td>
                   <td className="py-2 text-right tabular-nums">
                     {r.amount != null ? r.amount.toFixed(2) : "—"}
                   </td>
-                  <td className="py-2 text-muted-foreground">{r.description ?? ""}</td>
+                  <td className="py-2 pl-6 text-muted-foreground">{r.description ?? ""}</td>
                   <td className="py-2 text-right">
                     <div className="flex justify-end gap-1">
                       <Button
@@ -174,6 +266,16 @@ export function TaxClient() {
               ))}
             </tbody>
           </table>
+          {filtered.length > 0 && (
+            <Pagination
+              page={clampedPage}
+              totalPages={totalPages}
+              total={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -186,12 +288,17 @@ export function TaxClient() {
             </CardContent>
           </Card>
         )}
-        {filtered.map((r) => (
+        {paged.map((r) => (
           <Card key={r.id}>
             <CardContent className="space-y-2 pt-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
+                    <Checkbox
+                      checked={selected.has(r.id)}
+                      onChange={() => toggle(r.id)}
+                      ariaLabel="Select record"
+                    />
                     <span className="text-sm font-semibold">{r.date.slice(0, 7)}</span>
                     <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       {TYPE_LABEL[r.type]}
@@ -231,6 +338,20 @@ export function TaxClient() {
             </CardContent>
           </Card>
         ))}
+        {filtered.length > 0 && (
+          <Card>
+            <CardContent className="py-3">
+              <Pagination
+                page={clampedPage}
+                totalPages={totalPages}
+                total={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <CreateTaxRecordDialog
@@ -264,5 +385,94 @@ function TaxConfigFilterSelect({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+function Checkbox({
+  checked,
+  indeterminate,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !!indeterminate && !checked;
+  }, [indeterminate, checked]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      aria-label={ariaLabel}
+      className="h-4 w-4 cursor-pointer rounded border-input accent-primary"
+    />
+  );
+}
+
+const PAGE_SIZES = [10, 25, 50, 100];
+
+function Pagination({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+  onPageSizeChange: (s: number) => void;
+}) {
+  const from = total === 0 ? 0 : page * pageSize + 1;
+  const to = Math.min(total, page * pageSize + pageSize);
+  return (
+    <div className="mt-4 flex flex-col gap-3 border-t pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">Per page</span>
+        <Select
+          value={String(pageSize)}
+          onValueChange={(v) => onPageSizeChange(Number(v))}
+        >
+          <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZES.map((s) => (
+              <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-muted-foreground tabular-nums">
+          {from}–{to} of {total}
+        </span>
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 0}
+          >
+            Prev
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages - 1}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
