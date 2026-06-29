@@ -7,6 +7,13 @@ export const taxConfigSchema = z.object({
     .transform((v) => Number(v))
     .pipe(z.number().min(0).max(100))
     .default(0),
+  staticAmount: z
+    .union([z.number(), z.string()])
+    .transform((v) => Number(v))
+    .pipe(z.number().nonnegative())
+    .optional()
+    .nullable(),
+  currency: z.string().length(3).default("USD"),
 });
 export type TaxConfigInput = z.infer<typeof taxConfigSchema>;
 

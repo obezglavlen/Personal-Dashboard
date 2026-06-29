@@ -76,8 +76,8 @@ async function main() {
 
   await prisma.taxConfig.createMany({
     data: [
-      { userId: user.id, name: "VAT",        rate: 20 },
-      { userId: user.id, name: "Income Tax", rate: 13 },
+      { userId: user.id, name: "VAT",        rate: 20, staticAmount: 1000, currency: "USD" },
+      { userId: user.id, name: "Income Tax", rate: 13, staticAmount: 500,  currency: "EUR" },
     ],
     skipDuplicates: true,
   });

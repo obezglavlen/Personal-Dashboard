@@ -13,6 +13,8 @@ export type TaxConfig = {
   id: string;
   name: string;
   rate: number;
+  staticAmount: number | null;
+  currency: string;
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -21,13 +23,21 @@ export function TaxSidebar() {
   const { data: configs, mutate } = useSWR<TaxConfig[]>("/api/tax-configs", fetcher);
   const [name, setName] = useState("");
   const [rate, setRate] = useState("");
+  const [staticAmount, setStaticAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
+    const body = {
+      name,
+      rate: rate === "" ? 0 : Number(rate),
+      staticAmount: staticAmount === "" ? null : Number(staticAmount),
+      currency: currency.toUpperCase(),
+    };
     const res = await fetch("/api/tax-configs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, rate: rate === "" ? 0 : Number(rate) }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -36,6 +46,8 @@ export function TaxSidebar() {
     }
     setName("");
     setRate("");
+    setStaticAmount("");
+    setCurrency("USD");
     toast.success("Tax added");
     mutate();
   }
@@ -74,6 +86,28 @@ export function TaxSidebar() {
               onChange={(e) => setRate(e.target.value)}
             />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="tax-amount">Static amount (optional)</Label>
+            <Input
+              id="tax-amount"
+              type="number"
+              step="0.01"
+              min="0"
+              value={staticAmount}
+              onChange={(e) => setStaticAmount(e.target.value)}
+              placeholder="pre-fills Create form"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="tax-currency">Currency</Label>
+            <Input
+              id="tax-currency"
+              maxLength={3}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+              placeholder="USD"
+            />
+          </div>
           <Button type="submit" size="sm" className="w-full">
             <Plus className="mr-2 h-3 w-3" /> Add Tax
           </Button>
@@ -90,7 +124,12 @@ export function TaxSidebar() {
             >
               <div>
                 <p className="text-sm font-medium">{c.name}</p>
-                <p className="text-xs text-muted-foreground">{c.rate}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {c.rate}% ·{" "}
+                  {c.staticAmount != null
+                    ? `${c.staticAmount.toFixed(2)} ${c.currency}`
+                    : `no static amount`}
+                </p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => remove(c.id)}>
                 <Trash2 className="h-3 w-3" />
