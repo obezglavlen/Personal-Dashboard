@@ -11,7 +11,11 @@
 
 export const WIDGETS = [
 	{ id: "stats", title: "Stat cards" },
+	{ id: "net-worth", title: "Net worth" },
 	{ id: "income-expense", title: "Income / Expense chart" },
+	{ id: "budget-status", title: "Budget status" },
+	{ id: "upcoming-renewals", title: "Upcoming renewals" },
+	{ id: "due-tasks", title: "Tasks due soon" },
 	{ id: "recent-bookmarks", title: "Recent bookmarks" },
 	{ id: "recent-tasks", title: "Recent tasks" },
 ] as const;
