@@ -14,10 +14,10 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <Sidebar />
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-end gap-2 border-b px-6">
+        <header className="flex h-16 items-center justify-end gap-2 border-b border-border px-6">
           <ThemeToggle />
           <UserMenu email={session.user.email!} name={session.user.name} />
         </header>

@@ -2,8 +2,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { StatCard } from "@/components/shared/stat-card";
-import { Bookmark, StickyNote, CheckSquare, CheckCircle2, Receipt, Calculator, FileText } from "lucide-react";
+import {
+  Bookmark, StickyNote, CheckSquare, CheckCircle2,
+  Receipt, Calculator, FileText, ArrowRight,
+} from "lucide-react";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -39,75 +43,118 @@ export default async function DashboardPage() {
     take: 5,
   });
 
+  const completionRate = taskCount > 0 ? Math.round((completedTasks / taskCount) * 100) : 0;
+
   return (
     <div className="space-y-8">
-      <div>
+      <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back, {session!.user.name || "User"}</p>
+        <p className="text-muted-foreground">
+          Welcome back, {session!.user.name || "User"}.
+        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        <StatCard title="Bookmarks" value={bookmarkCount} icon={Bookmark} />
-        <StatCard title="Notes" value={noteCount} icon={StickyNote} />
-        <StatCard title="Total Tasks" value={taskCount} icon={CheckSquare} />
-        <StatCard title="Completed" value={completedTasks} icon={CheckCircle2} />
-        <StatCard title="Subscriptions" value={subscriptionCount} icon={Receipt} />
-        <StatCard title="Tax Types" value={taxConfigCount} icon={Calculator} />
-        <StatCard title="Tax Records" value={taxRecordCount} icon={FileText} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <StatCard title="Bookmarks" value={bookmarkCount} icon={Bookmark} description="Saved links" />
+        <StatCard title="Notes" value={noteCount} icon={StickyNote} description="Across all tags" />
+        <StatCard
+          title="Tasks"
+          value={`${completedTasks} / ${taskCount}`}
+          icon={CheckSquare}
+          description={`${completionRate}% complete`}
+        />
+        <StatCard
+          title="Subscriptions"
+          value={subscriptionCount}
+          icon={Receipt}
+          description="Tracked recurring"
+        />
+        <StatCard
+          title="Tax Types"
+          value={taxConfigCount}
+          icon={Calculator}
+          description="Configured"
+        />
+        <StatCard
+          title="Tax Records"
+          value={taxRecordCount}
+          icon={FileText}
+          description="All time"
+        />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Recent Bookmarks</h2>
-            <Link href="/bookmarks" className="text-sm text-primary hover:underline">
-              View all
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Recent Bookmarks</CardTitle>
+              <CardDescription>Your latest saved links</CardDescription>
+            </div>
+            <Link
+              href="/bookmarks"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              View all <ArrowRight className="h-3 w-3" />
             </Link>
-          </div>
-          <div className="space-y-2">
+          </CardHeader>
+          <CardContent>
             {recentBookmarks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No bookmarks yet</p>
+              <p className="text-sm text-muted-foreground">No bookmarks yet.</p>
             ) : (
-              recentBookmarks.map((bm) => (
-                <a
-                  key={bm.id}
-                  href={bm.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-md border p-3 transition-colors hover:bg-accent"
-                >
-                  <div className="font-medium">{bm.title}</div>
-                  <div className="text-xs text-muted-foreground">{bm.url}</div>
-                </a>
-              ))
+              <ul className="space-y-2">
+                {recentBookmarks.map((bm) => (
+                  <li key={bm.id}>
+                    <a
+                      href={bm.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col gap-0.5 rounded-md border border-border p-3 transition-colors hover:bg-accent"
+                    >
+                      <span className="text-sm font-medium">{bm.title}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {bm.url}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Recent Tasks</h2>
-            <Link href="/tasks" className="text-sm text-primary hover:underline">
-              View all
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Recent Tasks</CardTitle>
+              <CardDescription>Your latest activity</CardDescription>
+            </div>
+            <Link
+              href="/tasks"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            >
+              View all <ArrowRight className="h-3 w-3" />
             </Link>
-          </div>
-          <div className="space-y-2">
+          </CardHeader>
+          <CardContent>
             {recentTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tasks yet</p>
+              <p className="text-sm text-muted-foreground">No tasks yet.</p>
             ) : (
-              recentTasks.map((task) => (
-                <div key={task.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{task.title}</span>
-                    <span className="text-xs text-muted-foreground capitalize">
-                      {task.status}
+              <ul className="space-y-2">
+                {recentTasks.map((task) => (
+                  <li
+                    key={task.id}
+                    className="flex items-center justify-between rounded-md border border-border p-3"
+                  >
+                    <span className="text-sm font-medium">{task.title}</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                      {task.status.replace("_", " ")}
                     </span>
-                  </div>
-                </div>
-              ))
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
