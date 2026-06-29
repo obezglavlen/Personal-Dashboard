@@ -1,27 +1,20 @@
-import { shake_256 } from "js-sha3";
+import bcrypt from "bcryptjs";
+
+/** Cost factor for bcrypt. 12 is a sensible default for interactive logins. */
+const SALT_ROUNDS = 12;
 
 /**
- * Hash a password using SHAKE-256 with an output length derived from
- * the input password length (passwordL * 4 bits). Returns the digest
- * as an array of individual hex characters (the result of .split("")).
+ * Hash a plaintext password with bcrypt (salted, slow by design).
+ * Returns the encoded hash string suitable for storage.
  */
-export function hashPassword(inputPass: string): string[] {
-  const hash = shake_256(inputPass, 256);
-  return hash.split("").slice(0, 16);
+export function hashPassword(plaintext: string): Promise<string> {
+  return bcrypt.hash(plaintext, SALT_ROUNDS);
 }
 
 /**
- * Join the character array back into a hex string for storage / comparison.
+ * Verify a plaintext password against a stored bcrypt hash.
+ * Uses a constant-time comparison internally.
  */
-export function joinHash(chars: string[]): string {
-  return chars.join("");
-}
-
-/**
- * Verify a plaintext password against a stored character-array hash.
- */
-export function verifyPassword(inputPass: string, stored: string[] | string): boolean {
-  const storedStr = Array.isArray(stored) ? stored.join("") : stored;
-  const computed = hashPassword(inputPass).join("");
-  return computed === storedStr;
+export function verifyPassword(plaintext: string, storedHash: string): Promise<boolean> {
+  return bcrypt.compare(plaintext, storedHash);
 }

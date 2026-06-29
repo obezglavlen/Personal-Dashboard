@@ -1,36 +1,5 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { bookmarkSchema } from "@/lib/validations/bookmark";
+import { route } from "@/lib/api/handler";
+import { bookmarkHandlers } from "@/lib/api/resources";
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { id } = await params;
-  const body = await req.json();
-  const parsed = bookmarkSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const bookmark = await prisma.bookmark.update({
-    where: { id, userId: session.user.id },
-    data: parsed.data,
-  });
-
-  return NextResponse.json(bookmark);
-}
-
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { id } = await params;
-  await prisma.bookmark.delete({
-    where: { id, userId: session.user.id },
-  });
-
-  return NextResponse.json({ success: true });
-}
+export const PUT = route(bookmarkHandlers.update);
+export const DELETE = route(bookmarkHandlers.remove);

@@ -61,12 +61,12 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "No password set" }, { status: 400 });
     }
 
-    const valid = verifyPassword(currentPassword, user.password);
+    const valid = await verifyPassword(currentPassword, user.password);
     if (!valid) {
       return NextResponse.json({ error: "Current password incorrect" }, { status: 400 });
     }
 
-    const hashed = hashPassword(newPassword).join("");
+    const hashed = await hashPassword(newPassword);
     await prisma.user.update({
       where: { id: session.user.id },
       data: { password: hashed },
