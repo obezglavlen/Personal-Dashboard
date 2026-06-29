@@ -143,8 +143,13 @@ export function SubscriptionClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">Subscriptions</h1>
+        <p className="text-muted-foreground">
+          Track recurring expenses and see past or projected spend.
+        </p>
+      </div>
+      <div className="flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>

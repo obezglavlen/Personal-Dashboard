@@ -87,11 +87,15 @@ export function TaskClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
+        <p className="text-muted-foreground">
+          Kanban view of your todos, in-progress, and done work.
+        </p>
+      </div>
+      <div className="flex justify-end">
         <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Task
+          <Plus className="mr-2 h-4 w-4" /> Add Task
         </Button>
       </div>
 
@@ -166,11 +170,11 @@ export function TaskClient() {
               </div>
               <div className="space-y-2">
                 {colTasks.map((task) => (
-                  <Card key={task.id}>
+                  <Card key={task.id} className="transition-colors hover:bg-accent/40">
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-sm">{task.title}</CardTitle>
-                        <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} aria-label="Delete">
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
