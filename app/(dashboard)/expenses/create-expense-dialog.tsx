@@ -67,7 +67,8 @@ export function CreateExpenseDialog({
 				name: r.name,
 				amount: String(r.amount),
 				currency: r.currency,
-				date: toDateInput(new Date(r.date)),
+				// Use the UTC calendar day as stored, matching the table display.
+				date: r.date.slice(0, 10),
 				tags: r.tags,
 			};
 		}
@@ -102,7 +103,10 @@ export function CreateExpenseDialog({
 			name,
 			amount: amount !== "" ? Number(amount) : 0,
 			currency,
-			date: new Date(`${date}T00:00:00`).toISOString(),
+			// Store the picked calendar day at UTC midnight so the day the user
+			// selected is exactly what the table renders (r.date.slice(0,10)),
+			// with no local-timezone shift.
+			date: new Date(`${date}T00:00:00.000Z`).toISOString(),
 			tags,
 		};
 		try {
