@@ -9,6 +9,12 @@ const settingsSchema = z.object({
 	name: z.string().min(1).optional(),
 	theme: z.enum(["light", "dark", "system"]).optional(),
 	currency: z.string().length(3).optional(),
+	dashboardLayout: z
+		.object({
+			order: z.array(z.string()),
+			hidden: z.array(z.string()),
+		})
+		.optional(),
 	currentPassword: z.string().optional(),
 	newPassword: z.string().min(8).optional(),
 });
@@ -45,7 +51,14 @@ export async function PUT(req: Request) {
 		);
 	}
 
-	const { name, theme, currency, currentPassword, newPassword } = parsed.data;
+	const {
+		name,
+		theme,
+		currency,
+		dashboardLayout,
+		currentPassword,
+		newPassword,
+	} = parsed.data;
 
 	if (name) {
 		await prisma.user.update({
@@ -67,6 +80,14 @@ export async function PUT(req: Request) {
 			where: { userId: session.user.id },
 			update: { currency },
 			create: { userId: session.user.id, currency },
+		});
+	}
+
+	if (dashboardLayout) {
+		await prisma.userSettings.upsert({
+			where: { userId: session.user.id },
+			update: { dashboardLayout },
+			create: { userId: session.user.id, dashboardLayout },
 		});
 	}
 
