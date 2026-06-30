@@ -17,6 +17,11 @@ export const maxDuration = 30;
 // Cheap, tool-calling-capable model by default; override per deploy.
 const MODEL = process.env.CHAT_MODEL ?? "deepseek/deepseek-chat";
 
+// Reasoning effort for reasoning-capable models. "minimal" keeps answers fast;
+// "none" disables reasoning entirely. One of: xhigh|high|medium|low|minimal|none.
+const REASONING_EFFORT = (process.env.REASONING_EFFORT ??
+	"minimal") as "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
+
 function systemPrompt(currency: string): string {
 	const today = new Date().toISOString().slice(0, 10);
 	return [
@@ -63,6 +68,13 @@ export async function POST(req: Request) {
 		// Allow several tool round-trips so multi-step questions ("am I over any
 		// budget, and what's my biggest expense?") can resolve in one turn.
 		stopWhen: stepCountIs(8),
+		providerOptions: {
+			openrouter: {
+				// Minimize chain-of-thought on reasoning models for faster answers.
+				// Effort: xhigh|high|medium|low|minimal|none. Override via env.
+				reasoning: { effort: REASONING_EFFORT },
+			},
+		},
 	});
 
 	return result.toUIMessageStreamResponse();
