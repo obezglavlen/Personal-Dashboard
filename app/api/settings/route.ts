@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { telegramChatIdSchema } from "@/lib/validations/settings";
 
 const settingsSchema = z.object({
 	name: z.string().min(1).optional(),
@@ -14,6 +15,10 @@ const settingsSchema = z.object({
 			hidden: z.array(z.string()),
 		})
 		.optional(),
+	telegramChatId: telegramChatIdSchema.nullable().optional(),
+	notifyRenewals: z.boolean().optional(),
+	notifyBudgets: z.boolean().optional(),
+	notifyTasks: z.boolean().optional(),
 	currentPassword: z.string().optional(),
 	newPassword: z.string().min(8).optional(),
 });
@@ -32,6 +37,10 @@ export async function GET() {
 		name: user?.name,
 		email: user?.email,
 		currency: user?.settings?.currency ?? "USD",
+		telegramChatId: user?.settings?.telegramChatId ?? null,
+		notifyRenewals: user?.settings?.notifyRenewals ?? true,
+		notifyBudgets: user?.settings?.notifyBudgets ?? true,
+		notifyTasks: user?.settings?.notifyTasks ?? true,
 	});
 }
 
@@ -49,8 +58,17 @@ export async function PUT(req: Request) {
 		);
 	}
 
-	const { name, currency, dashboardLayout, currentPassword, newPassword } =
-		parsed.data;
+	const {
+		name,
+		currency,
+		dashboardLayout,
+		telegramChatId,
+		notifyRenewals,
+		notifyBudgets,
+		notifyTasks,
+		currentPassword,
+		newPassword,
+	} = parsed.data;
 
 	if (name) {
 		await prisma.user.update({
@@ -72,6 +90,21 @@ export async function PUT(req: Request) {
 			where: { userId: session.user.id },
 			update: { dashboardLayout },
 			create: { userId: session.user.id, dashboardLayout },
+		});
+	}
+
+	// Notification settings: only touch fields the client actually sent, so a
+	// partial save (e.g. toggling one switch) leaves the others intact.
+	const notif: Record<string, unknown> = {};
+	if (telegramChatId !== undefined) notif.telegramChatId = telegramChatId;
+	if (notifyRenewals !== undefined) notif.notifyRenewals = notifyRenewals;
+	if (notifyBudgets !== undefined) notif.notifyBudgets = notifyBudgets;
+	if (notifyTasks !== undefined) notif.notifyTasks = notifyTasks;
+	if (Object.keys(notif).length > 0) {
+		await prisma.userSettings.upsert({
+			where: { userId: session.user.id },
+			update: notif,
+			create: { userId: session.user.id, ...notif },
 		});
 	}
 

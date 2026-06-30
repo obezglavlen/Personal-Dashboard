@@ -43,16 +43,14 @@ export function spentForBudget(
 	expenses: ExpenseLike[],
 	displayCurrency: string,
 	rates: Record<string, number>,
+	ref: Date = new Date(),
 ): number {
-	const { start, end } = currentMonthRange();
+	const { start, end } = currentMonthRange(ref);
 	const tagSet = new Set(budget.tags.map((t) => t.toLowerCase()));
 	return expenses.reduce((sum, e) => {
 		const d = new Date(e.date);
 		if (d < start || d >= end) return sum;
-		if (
-			tagSet.size > 0 &&
-			!e.tags.some((t) => tagSet.has(t.toLowerCase()))
-		) {
+		if (tagSet.size > 0 && !e.tags.some((t) => tagSet.has(t.toLowerCase()))) {
 			return sum;
 		}
 		return sum + convertToBase(e.amount, e.currency, displayCurrency, rates);
