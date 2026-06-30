@@ -8,6 +8,9 @@ Personal home/admin dashboard with QoL features.
 - Notes with tags + pinning
 - Task board (kanban)
 - Dashboard with stats
+- AI chat assistant (asks questions about your own data)
+- Subscriptions, budgets, taxes, net worth
+- Daily Telegram digest (renewals due, over-budget, overdue tasks)
 - Dark/light theme
 - Settings with password change
 
@@ -24,7 +27,7 @@ Personal home/admin dashboard with QoL features.
 
 ```bash
 cp .env.example .env
-# Edit .env: set DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+# Edit .env: set at least DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
 docker compose up -d
 ```
 
@@ -44,12 +47,119 @@ pnpm db:seed
 pnpm dev
 ```
 
-## Deploy to Vercel
+## Deploy to Vercel (step by step)
 
-1. Push repo to GitHub
-2. Import at vercel.com
-3. Add env vars: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
-4. Deploy
+A complete, copy-paste guide. Follow it top to bottom — no prior Vercel knowledge needed.
+
+### What you need first
+
+- A **GitHub** account with this project pushed to a repository.
+- A **Vercel** account — sign up at https://vercel.com with your GitHub. The free *Hobby* plan is enough.
+- A **PostgreSQL database** reachable from the internet (created in Step 1).
+
+### Step 1 — Create a PostgreSQL database
+
+The app stores everything in Postgres and connects with the `pg` driver, so you need a **normal Postgres connection string** that starts with `postgresql://` — **not** a pooled `prisma://` URL.
+
+Easiest path (inside Vercel):
+
+1. Vercel dashboard → **Storage** → **Create Database** → choose **Postgres** (Neon or Prisma Postgres).
+2. Follow the prompts. When it's done, open the database and find the **Connect** / **`.env.local`** tab.
+3. Copy the **direct** connection string. It looks like:
+
+   ```
+   postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
+   ```
+
+   You will paste this as `DATABASE_URL` in Step 4. Keep it private.
+
+Any other provider works too (Neon, Supabase, Railway, or your own server) — just grab its `postgresql://...` connection string. Cloud databases usually require `?sslmode=require` at the end.
+
+### Step 2 — Import the project into Vercel
+
+1. You already forked project to your gitlab, so connect your github to Vercel
+2. Vercel dashboard → **Add New… → Project**.
+3. Select your GitHub repo → **Import Git Repository**.
+3. The Framework Preset is auto-detected as **Next.js** — leave it.
+4. **Do not change** the Build or Install commands. They are already defined in `vercel.json`: install with `pnpm install`, then the build runs `prisma generate` → `prisma migrate deploy` → `next build`.
+5. **Don't click Deploy yet** — add the environment variables first (Step 4).
+
+### Step 3 — Set environment variables
+
+On the import screen (or later under **Project → Settings → Environment Variables**), add the variables from the [Environment Variables](#environment-variables) table below. At minimum set the three **Required** ones. Apply them to the **Production** environment (also add **Preview** if you want preview deployments to work).
+
+> For `NEXTAUTH_URL` you don't know the final URL yet. Put a placeholder such as `https://example.vercel.app` for now and fix it in Step 6.
+
+### Step 4 — Deploy
+
+Click **Deploy**. The build runs database migrations automatically (`prisma migrate deploy`), so all tables are created on the first deploy. Wait until it turns green.
+
+> If the build fails on the migrate step, your `DATABASE_URL` is wrong or the database isn't reachable. Fix the value and redeploy.
+
+### Step 5 — Point `NEXTAUTH_URL` at the real domain
+
+1. After the first deploy, Vercel shows your URL, e.g. `https://home-dashboard-xyz.vercel.app`.
+2. **Settings → Environment Variables** → edit **`NEXTAUTH_URL`** → set it to that exact URL (no trailing slash).
+3. **Redeploy** (Deployments → ⋯ → **Redeploy**) so the new value takes effect.
+
+Login will not work correctly until `NEXTAUTH_URL` matches your real domain.
+
+### Step 6 — Create your login (seed the database)
+
+The deploy creates empty tables but **no user**. Create the first admin from your own computer, pointed at the **production** database.
+
+bash / macOS / Linux:
+
+```bash
+DATABASE_URL="<your production DATABASE_URL>" pnpm db:seed
+```
+
+Windows PowerShell:
+
+```powershell
+$env:DATABASE_URL="<your production DATABASE_URL>"; pnpm db:seed
+```
+
+This creates the login **`admin@localhost.dev`** / **`admin123`** plus a little sample data. Log in, then change the password in **Settings**.
+
+Want a custom password instead of `admin123`? Seed first (above), then run:
+
+```powershell
+$env:DATABASE_URL="<prod url>"; $env:ADMIN_PASSWORD="your-strong-password"; pnpm tsx scripts/reset-admin.mts
+```
+
+### Step 8 — Scheduled jobs (cron)
+
+`vercel.json` defines two daily cron jobs: auto-post subscription renewals at 06:00 and send the Telegram digest at 07:00. They run automatically on Vercel **only if** you set `CRON_SECRET` — Vercel attaches it as the `Authorization: Bearer` header when it calls the cron URLs. Without `CRON_SECRET` those endpoints return `503` and nothing runs. The digest also needs `TELEGRAM_BOT_TOKEN`.
+
+Done. Open your Vercel URL and log in.
+
+## Environment Variables
+
+Set these in **Vercel → Project → Settings → Environment Variables**. For local dev they live in `.env` (copy from `.env.example`).
+
+Legend: ✅ Required · ⚠️ Required for that feature only · ⬜ Optional
+
+| Variable | Required? | What it does | If missing | How to get it / value |
+|---|---|---|---|---|
+| `DATABASE_URL` | ✅ | Postgres connection. Used by build-time migrations **and** at runtime via the `pg` adapter. | Build fails at `prisma migrate deploy`; app can't start. | Direct Postgres URL `postgresql://user:pass@host:5432/db?sslmode=require`. From Vercel Storage / Neon / Supabase (Step 1). |
+| `NEXTAUTH_SECRET` | ✅ | Signs the NextAuth session (JWT) cookies. | NextAuth refuses to run in production; login is broken. | Generate one (see command below). |
+| `NEXTAUTH_URL` | ✅ | Canonical site URL for auth callbacks/redirects. | Login redirects break. | Your deployment URL, e.g. `https://your-app.vercel.app` (no trailing slash). |
+| `CRON_SECRET` | ⚠️ crons | Guards `/api/cron/*`. Vercel Cron sends it as a Bearer token. | Cron endpoints return `503`; daily renewals + digest never run. | Generate one (see command below). |
+| `TELEGRAM_BOT_TOKEN` | ⬜ | Sends the daily Telegram digest + the "Send test" button in Settings. | Those return `503`; rest of app is fine. | Create a bot via [@BotFather](https://t.me/BotFather). Each user links their chat id in Settings → Notifications. |
+| `OPENROUTER_API_KEY` | ⬜ | Powers the AI chat assistant (via OpenRouter). | AI chat returns an error; rest of app is fine. | https://openrouter.ai/keys |
+| `CHAT_MODEL` | ⬜ | Model id for the AI chat. **Must support tool/function calling.** | Defaults to `deepseek/deepseek-chat`. | Any tool-calling model id from OpenRouter. |
+| `REASONING_EFFORT` | ⬜ | Chain-of-thought depth for reasoning models. | Defaults to `minimal`. | One of `xhigh\|high\|medium\|low\|minimal\|none`. |
+
+Generate the secrets (works on any OS that has Node):
+
+```bash
+# NEXTAUTH_SECRET
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+
+# CRON_SECRET
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
 ## Add New Feature
 
@@ -70,6 +180,6 @@ pnpm dev
 | `pnpm db:generate` | Generate Prisma client |
 | `pnpm db:migrate:dev` | Create migration |
 | `pnpm db:migrate:deploy` | Apply migrations |
-| `pnpm db:seed` | Seed DB |
+| `pnpm db:seed` | Seed DB (creates `admin@localhost.dev` / `admin123`) |
 | `pnpm db:studio` | Prisma Studio |
 | `pnpm db:reset` | Reset DB |
