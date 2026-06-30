@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Bot, Send, User, Wrench } from "lucide-react";
@@ -36,6 +36,14 @@ export function AssistantClient() {
 	const [input, setInput] = useState("");
 	const endRef = useRef<HTMLDivElement>(null);
 	const busy = status === "submitted" || status === "streaming";
+
+	// While the model streams its chain-of-thought (reasoning) and tool calls,
+	// no answer text exists yet. Keep the "Thinking…" indicator up until the
+	// final answer text starts arriving, so the bubble is never blank.
+	const last = messages[messages.length - 1];
+	const lastHasAnswerText =
+		last?.role === "assistant" &&
+		last.parts.some((p) => p.type === "text" && p.text.trim().length > 0);
 
 	// Keep the latest message in view as tokens stream in.
 	useEffect(() => {
@@ -85,7 +93,7 @@ export function AssistantClient() {
 					) : (
 						messages.map((m) => <Message key={m.id} message={m} />)
 					)}
-					{status === "submitted" && (
+					{busy && !lastHasAnswerText && (
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Bot className="h-4 w-4" />
 							<span className="animate-pulse">Thinking…</span>
@@ -146,14 +154,32 @@ function Message({ message }: { message: ChatMessage }) {
 							<div
 								key={i}
 								className={cn(
-									"whitespace-pre-wrap rounded-lg px-3 py-2 text-sm",
+									"rounded-lg px-3 py-2 text-sm",
 									isUser
 										? "bg-primary text-primary-foreground"
 										: "bg-muted text-foreground",
 								)}
 							>
-								{part.text}
+								<Markdown text={part.text} />
 							</div>
+						);
+					}
+					// Model streams chain-of-thought before the answer. Show it
+					// collapsed so the bubble isn't blank while it thinks.
+					if (part.type === "reasoning") {
+						if (!part.text.trim()) return null;
+						return (
+							<details
+								key={i}
+								className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground"
+							>
+								<summary className="cursor-pointer select-none">
+									Reasoning
+								</summary>
+								<div className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap">
+									{part.text}
+								</div>
+							</details>
 						);
 					}
 					if (part.type.startsWith("tool-")) {
@@ -172,5 +198,56 @@ function Message({ message }: { message: ChatMessage }) {
 				})}
 			</div>
 		</div>
+	);
+}
+
+/** Inline `**bold**` and `` `code` `` within one line; everything else literal. */
+function renderInline(text: string, keyBase: string): ReactNode[] {
+	const nodes: ReactNode[] = [];
+	const re = /\*\*([^*]+)\*\*|`([^`]+)`/g;
+	let last = 0;
+	let idx = 0;
+	let m: RegExpExecArray | null = re.exec(text);
+	while (m !== null) {
+		if (m.index > last) nodes.push(text.slice(last, m.index));
+		if (m[1] !== undefined) {
+			nodes.push(<strong key={`${keyBase}-b${idx}`}>{m[1]}</strong>);
+		} else if (m[2] !== undefined) {
+			nodes.push(
+				<code
+					key={`${keyBase}-c${idx}`}
+					className="rounded bg-black/10 px-1 py-0.5 text-[0.85em] dark:bg-white/10"
+				>
+					{m[2]}
+				</code>,
+			);
+		}
+		last = m.index + m[0].length;
+		idx++;
+		m = re.exec(text);
+	}
+	if (last < text.length) nodes.push(text.slice(last));
+	return nodes;
+}
+
+/**
+ * Minimal markdown: bold, inline code, line breaks, and `-`/`*` bullets. Enough
+ * for the assistant's short answers without pulling in a full markdown parser.
+ */
+function Markdown({ text }: { text: string }) {
+	const lines = text.split("\n");
+	return (
+		<>
+			{lines.map((line, i) => {
+				const bullet = /^\s*[-*]\s+/.test(line);
+				const content = bullet ? line.replace(/^\s*[-*]\s+/, "") : line;
+				return (
+					<div key={i} className={bullet ? "flex gap-1.5" : undefined}>
+						{bullet && <span aria-hidden>•</span>}
+						<span>{renderInline(content, `l${i}`)}</span>
+					</div>
+				);
+			})}
+		</>
 	);
 }
