@@ -1,7 +1,6 @@
 "use client";
 
-import { Database, Download, Lock, Palette, Upload, User } from "lucide-react";
-import { useTheme } from "next-themes";
+import { Database, Download, Lock, Upload, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,14 +26,11 @@ import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 type SettingsData = {
 	name: string | null;
 	email: string | null;
-	theme: string;
 };
 
 export function SettingsClient() {
-	const { setTheme } = useTheme();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
-	const [theme, setThemeState] = useState("system");
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +44,6 @@ export function SettingsClient() {
 			.then((data) => {
 				setName(data.name || "");
 				setEmail(data.email || "");
-				setThemeState(data.theme || "system");
 			})
 			.catch(() => toast.error("Failed to load settings"));
 	}, []);
@@ -56,8 +51,7 @@ export function SettingsClient() {
 	async function saveProfile(e: React.FormEvent) {
 		e.preventDefault();
 		try {
-			await apiPut("/api/settings", { name, theme });
-			setTheme(theme);
+			await apiPut("/api/settings", { name });
 			toast.success("Profile saved");
 		} catch (err) {
 			toast.error(
@@ -126,7 +120,7 @@ export function SettingsClient() {
 					Settings
 				</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Manage your account, theme, and security.
+					Manage your account and security.
 				</p>
 			</div>
 
@@ -151,27 +145,6 @@ export function SettingsClient() {
 							<div className="space-y-2">
 								<Label htmlFor="settings-email">Email</Label>
 								<Input id="settings-email" value={email} disabled />
-							</div>
-							<div className="space-y-2">
-								<Label className="flex items-center gap-2">
-									<Palette className="h-3 w-3" /> Theme
-								</Label>
-								<div className="flex flex-wrap gap-2">
-									{(["light", "dark", "system"] as const).map((t) => (
-										<Button
-											key={t}
-											type="button"
-											variant={theme === t ? "default" : "outline"}
-											onClick={() => {
-												setThemeState(t);
-												setTheme(t);
-											}}
-											className="flex-1 sm:flex-none"
-										>
-											{t.charAt(0).toUpperCase() + t.slice(1)}
-										</Button>
-									))}
-								</div>
 							</div>
 							<Button type="submit">Save Changes</Button>
 						</form>

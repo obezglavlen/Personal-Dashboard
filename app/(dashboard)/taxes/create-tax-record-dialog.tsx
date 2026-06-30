@@ -202,6 +202,9 @@ export function CreateTaxRecordDialog({
 		setTaxConfigId(v);
 		setBaseRecordId("");
 		setUserTouchedAmount(false);
+		// A tax config only makes sense on an expense record: force and lock the
+		// type while one is selected (unlocked again when set back to none).
+		if (v !== "") setType("expense");
 		// Prefill the currency selector from the chosen tax config.
 		const cfg = configs?.find((c) => c.id === v);
 		if (cfg?.currency) setCurrency(cfg.currency);
@@ -269,6 +272,7 @@ export function CreateTaxRecordDialog({
 						<Select
 							value={type}
 							onValueChange={(v) => setType(v as RecordType)}
+							disabled={taxConfigId !== ""}
 						>
 							<SelectTrigger>
 								<SelectValue />

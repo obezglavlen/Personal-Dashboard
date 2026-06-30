@@ -156,11 +156,16 @@ function TaskCardView({
 	onDelete,
 	onEdit,
 	dragging,
+	handleProps,
 }: {
 	task: Task;
 	onDelete?: (id: string) => void;
 	onEdit?: (task: Task) => void;
 	dragging?: boolean;
+	// Drag listeners/attributes applied to the grip handle only, so the rest
+	// of the card stays scrollable on touch devices. Typed loosely because
+	// dnd-kit's listener map isn't assignable to React's button attributes.
+	handleProps?: Record<string, unknown>;
 }) {
 	return (
 		<Card
@@ -172,8 +177,19 @@ function TaskCardView({
 			<CardHeader className="pb-2">
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex items-start gap-1.5">
-						<GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-						<CardTitle className="text-sm">{task.title}</CardTitle>
+						{handleProps ? (
+							<button
+								type="button"
+								aria-label="Drag to reorder"
+								className="-m-1 flex shrink-0 cursor-grab touch-none items-center self-stretch p-1 text-muted-foreground"
+								{...handleProps}
+							>
+								<GripVertical className="h-4 w-4" />
+							</button>
+						) : (
+							<GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+						)}
+						<CardTitle className="mt-0.5 text-sm">{task.title}</CardTitle>
 					</div>
 					<div className="flex shrink-0 items-center">
 						{onEdit && (
@@ -235,13 +251,13 @@ function DraggableCard({
 		id: task.id,
 	});
 	return (
-		<div
-			ref={setNodeRef}
-			{...attributes}
-			{...listeners}
-			className={cn("cursor-grab touch-none", isDragging && "opacity-40")}
-		>
-			<TaskCardView task={task} onDelete={onDelete} onEdit={onEdit} />
+		<div ref={setNodeRef} className={cn(isDragging && "opacity-40")}>
+			<TaskCardView
+				task={task}
+				onDelete={onDelete}
+				onEdit={onEdit}
+				handleProps={{ ...attributes, ...listeners }}
+			/>
 		</div>
 	);
 }

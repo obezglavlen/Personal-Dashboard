@@ -7,7 +7,6 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 
 const settingsSchema = z.object({
 	name: z.string().min(1).optional(),
-	theme: z.enum(["light", "dark", "system"]).optional(),
 	currency: z.string().length(3).optional(),
 	dashboardLayout: z
 		.object({
@@ -32,7 +31,6 @@ export async function GET() {
 	return NextResponse.json({
 		name: user?.name,
 		email: user?.email,
-		theme: user?.settings?.theme ?? "system",
 		currency: user?.settings?.currency ?? "USD",
 	});
 }
@@ -51,27 +49,13 @@ export async function PUT(req: Request) {
 		);
 	}
 
-	const {
-		name,
-		theme,
-		currency,
-		dashboardLayout,
-		currentPassword,
-		newPassword,
-	} = parsed.data;
+	const { name, currency, dashboardLayout, currentPassword, newPassword } =
+		parsed.data;
 
 	if (name) {
 		await prisma.user.update({
 			where: { id: session.user.id },
 			data: { name },
-		});
-	}
-
-	if (theme) {
-		await prisma.userSettings.upsert({
-			where: { userId: session.user.id },
-			update: { theme },
-			create: { userId: session.user.id, theme },
 		});
 	}
 
