@@ -1,0 +1,99 @@
+import { currentMonthRange } from "@/lib/budget";
+import { prisma } from "@/lib/db";
+import { getRates } from "@/lib/rates";
+import type { Period } from "@/lib/subscriptions";
+import { sendTelegramMessage } from "@/lib/telegram";
+import { buildDigest, type DigestData } from "./digest";
+
+/**
+ * Send the daily Telegram digest to every user who has linked a chat id, or to
+ * a single user (the per-user "send test"/manual path). Structured like
+ * `postDueRenewals`: each user is isolated in try/catch so one failure (e.g. a
+ * stale chat id) never aborts the batch. Users whose digest is empty are
+ * skipped without a send. Returns counts for the cron response.
+ *
+ * @param userId restrict to one user, or omit to process every linked user (cron).
+ */
+export async function sendDailyDigests(
+	userId?: string,
+): Promise<{ sent: number; users: number }> {
+	const now = new Date();
+	const { start, end } = currentMonthRange(now);
+
+	const settingsList = await prisma.userSettings.findMany({
+		where: {
+			telegramChatId: { not: null },
+			...(userId ? { userId } : {}),
+		},
+	});
+
+	let sent = 0;
+	for (const s of settingsList) {
+		const chatId = s.telegramChatId;
+		if (!chatId) continue;
+		try {
+			const displayCurrency = s.currency || "USD";
+
+			const [subs, budgets, expenses, tasks, rates] = await Promise.all([
+				prisma.subscription.findMany({ where: { userId: s.userId } }),
+				prisma.budget.findMany({ where: { userId: s.userId } }),
+				prisma.expense.findMany({
+					where: { userId: s.userId, date: { gte: start, lt: end } },
+				}),
+				prisma.task.findMany({
+					where: {
+						userId: s.userId,
+						status: { not: "done" },
+						dueDate: { not: null },
+					},
+				}),
+				getRates(displayCurrency),
+			]);
+
+			const data: DigestData = {
+				subscriptions: subs.map((x) => ({
+					name: x.name,
+					price: Number(x.price),
+					period: x.period as Period,
+					startDate: x.startDate.toISOString(),
+					currency: x.currency,
+					category: x.category,
+				})),
+				budgets: budgets.map((b) => ({
+					name: b.name,
+					amount: Number(b.amount),
+					currency: b.currency,
+					tags: b.tags,
+				})),
+				expenses: expenses.map((e) => ({
+					amount: Number(e.amount),
+					currency: e.currency,
+					date: e.date.toISOString(),
+					tags: e.tags,
+				})),
+				tasks: tasks.map((t) => ({
+					title: t.title,
+					dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+					status: t.status,
+				})),
+				displayCurrency,
+				rates,
+				prefs: {
+					renewals: s.notifyRenewals,
+					budgets: s.notifyBudgets,
+					tasks: s.notifyTasks,
+				},
+			};
+
+			const message = buildDigest(data, now);
+			if (!message) continue;
+
+			await sendTelegramMessage(chatId, message);
+			sent++;
+		} catch (e) {
+			console.error(`Daily digest failed for user ${s.userId}:`, e);
+		}
+	}
+
+	return { sent, users: settingsList.length };
+}

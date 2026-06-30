@@ -10,20 +10,30 @@ import {
   StickyNote,
   CheckSquare,
   Settings,
-  Lock,
+  Wrench,
   Receipt,
   Calculator,
+  Wallet,
+  PiggyBank,
+  BarChart3,
+  Landmark,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
+export const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/assistant", label: "Assistant", icon: MessageSquare },
   { href: "/bookmarks", label: "Bookmarks", icon: Bookmark },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/subscriptions", label: "Subscriptions", icon: Receipt },
+  { href: "/expenses", label: "Expenses", icon: Wallet },
+  { href: "/budgets", label: "Budgets", icon: PiggyBank },
+  { href: "/net-worth", label: "Net Worth", icon: Landmark },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/taxes", label: "Taxes", icon: Calculator },
-  { href: "/hasher", label: "Hasher", icon: Lock },
+  { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -10,6 +10,7 @@ export const subscriptionSchema = z.object({
   startDate: z.string().optional(),
   category: z.string().max(60).optional().nullable(),
   currency: z.string().length(3).default("USD"),
+  autoExpense: z.boolean().optional(),
 });
 
 export type SubscriptionInput = z.infer<typeof subscriptionSchema>;
