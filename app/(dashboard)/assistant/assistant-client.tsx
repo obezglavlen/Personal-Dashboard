@@ -30,7 +30,7 @@ const SUGGESTIONS = [
 ];
 
 export function AssistantClient() {
-	const { messages, sendMessage, status } = useChat({
+	const { messages, sendMessage, status, error } = useChat({
 		transport: new DefaultChatTransport({ api: "/api/chat" }),
 	});
 	const [input, setInput] = useState("");
@@ -97,6 +97,18 @@ export function AssistantClient() {
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
 							<Bot className="h-4 w-4" />
 							<span className="animate-pulse">Thinking…</span>
+						</div>
+					)}
+					{error && (
+						<div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+							{error.message || "Something went wrong. Please try again."}
+						</div>
+					)}
+					{/* Model finished a turn but produced no answer text (e.g. it put
+					    everything in reasoning, or a tool step returned nothing). */}
+					{!busy && !error && last?.role === "assistant" && !lastHasAnswerText && (
+						<div className="text-sm text-muted-foreground">
+							No answer was returned. Try rephrasing or ask again.
 						</div>
 					)}
 					<div ref={endRef} />
