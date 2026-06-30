@@ -77,5 +77,15 @@ export async function POST(req: Request) {
 		},
 	});
 
-	return result.toUIMessageStreamResponse();
+	return result.toUIMessageStreamResponse({
+		// Without this, the SDK masks every stream error as "An error occurred."
+		// so a mid-stream failure (e.g. a rate-limited free model on a tool
+		// continuation step) shows as reasoning followed by a blank answer.
+		// Surface the real reason instead.
+		onError: (error) => {
+			console.error("chat stream error:", error);
+			if (error instanceof Error) return error.message;
+			return "The model failed to respond. Please try again.";
+		},
+	});
 }
