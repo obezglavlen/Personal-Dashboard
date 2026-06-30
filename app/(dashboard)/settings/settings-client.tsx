@@ -1,6 +1,6 @@
 "use client";
 
-import { Database, Download, Lock, Upload, User } from "lucide-react";
+import { Bell, Database, Download, Lock, Upload, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,10 @@ import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 type SettingsData = {
 	name: string | null;
 	email: string | null;
+	telegramChatId: string | null;
+	notifyRenewals: boolean;
+	notifyBudgets: boolean;
+	notifyTasks: boolean;
 };
 
 export function SettingsClient() {
@@ -33,6 +37,12 @@ export function SettingsClient() {
 	const [email, setEmail] = useState("");
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
+	const [telegramChatId, setTelegramChatId] = useState("");
+	const [notifyRenewals, setNotifyRenewals] = useState(true);
+	const [notifyBudgets, setNotifyBudgets] = useState(true);
+	const [notifyTasks, setNotifyTasks] = useState(true);
+	const [savingNotif, setSavingNotif] = useState(false);
+	const [testingNotif, setTestingNotif] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const importModeRef = useRef<"merge" | "replace">("merge");
 	const [importing, setImporting] = useState(false);
@@ -44,6 +54,10 @@ export function SettingsClient() {
 			.then((data) => {
 				setName(data.name || "");
 				setEmail(data.email || "");
+				setTelegramChatId(data.telegramChatId || "");
+				setNotifyRenewals(data.notifyRenewals);
+				setNotifyBudgets(data.notifyBudgets);
+				setNotifyTasks(data.notifyTasks);
 			})
 			.catch(() => toast.error("Failed to load settings"));
 	}, []);
@@ -69,6 +83,38 @@ export function SettingsClient() {
 			toast.success("Password changed");
 		} catch (err) {
 			toast.error(err instanceof Error ? err.message : "Error");
+		}
+	}
+
+	async function saveNotifications(e: React.FormEvent) {
+		e.preventDefault();
+		setSavingNotif(true);
+		try {
+			await apiPut("/api/settings", {
+				telegramChatId: telegramChatId.trim() || null,
+				notifyRenewals,
+				notifyBudgets,
+				notifyTasks,
+			});
+			toast.success("Notification settings saved");
+		} catch (err) {
+			toast.error(
+				err instanceof Error ? err.message : "Failed to save notifications",
+			);
+		} finally {
+			setSavingNotif(false);
+		}
+	}
+
+	async function sendTest() {
+		setTestingNotif(true);
+		try {
+			await apiPost("/api/notify/test", {});
+			toast.success("Test message sent — check Telegram");
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Failed to send test");
+		} finally {
+			setTestingNotif(false);
 		}
 	}
 
@@ -233,6 +279,95 @@ export function SettingsClient() {
 							className="hidden"
 							onChange={onFileChange}
 						/>
+					</CardContent>
+				</Card>
+
+				<Card className="lg:col-span-2">
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Bell className="h-4 w-4" /> Notifications
+						</CardTitle>
+						<CardDescription>
+							Get a daily Telegram digest of upcoming renewals, budgets near or
+							over cap, and overdue tasks.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<form onSubmit={saveNotifications} className="space-y-4">
+							<div className="space-y-2">
+								<Label htmlFor="settings-telegram">Telegram chat ID</Label>
+								<Input
+									id="settings-telegram"
+									inputMode="numeric"
+									placeholder="e.g. 123456789"
+									value={telegramChatId}
+									onChange={(e) => setTelegramChatId(e.target.value)}
+								/>
+								<p className="text-xs text-muted-foreground">
+									Message your bot once, then get your numeric ID from{" "}
+									<a
+										href="https://t.me/userinfobot"
+										target="_blank"
+										rel="noreferrer"
+										className="underline"
+									>
+										@userinfobot
+									</a>
+									. Leave empty to turn notifications off.
+								</p>
+							</div>
+							<fieldset className="space-y-2">
+								<legend className="text-sm font-medium">Include</legend>
+								{[
+									{
+										id: "notify-renewals",
+										label: "Subscription renewals due soon",
+										checked: notifyRenewals,
+										set: setNotifyRenewals,
+									},
+									{
+										id: "notify-budgets",
+										label: "Budgets near or over cap",
+										checked: notifyBudgets,
+										set: setNotifyBudgets,
+									},
+									{
+										id: "notify-tasks",
+										label: "Overdue and due-today tasks",
+										checked: notifyTasks,
+										set: setNotifyTasks,
+									},
+								].map((row) => (
+									<label
+										key={row.id}
+										htmlFor={row.id}
+										className="flex items-center gap-2 text-sm"
+									>
+										<input
+											id={row.id}
+											type="checkbox"
+											className="h-4 w-4 rounded border-input accent-primary"
+											checked={row.checked}
+											onChange={(e) => row.set(e.target.checked)}
+										/>
+										{row.label}
+									</label>
+								))}
+							</fieldset>
+							<div className="flex flex-wrap gap-2">
+								<Button type="submit" disabled={savingNotif}>
+									{savingNotif ? "Saving…" : "Save"}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={sendTest}
+									disabled={testingNotif}
+								>
+									{testingNotif ? "Sending…" : "Send test message"}
+								</Button>
+							</div>
+						</form>
 					</CardContent>
 				</Card>
 			</div>

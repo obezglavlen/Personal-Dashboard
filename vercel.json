@@ -1,10 +1,14 @@
 {
-  "buildCommand": "rm -rf generated .next && npx prisma generate && npx prisma migrate deploy && pnpm build",
-  "installCommand": "pnpm install",
-  "crons": [
-    {
-      "path": "/api/cron/post-renewals",
-      "schedule": "0 6 * * *"
-    }
-  ]
+	"buildCommand": "rm -rf generated .next && npx prisma generate && npx prisma migrate deploy && pnpm build",
+	"installCommand": "pnpm install",
+	"crons": [
+		{
+			"path": "/api/cron/post-renewals",
+			"schedule": "0 6 * * *"
+		},
+		{
+			"path": "/api/cron/notify",
+			"schedule": "0 7 * * *"
+		}
+	]
 }
