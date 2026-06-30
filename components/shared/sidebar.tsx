@@ -17,11 +17,13 @@ import {
   PiggyBank,
   BarChart3,
   Landmark,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/assistant", label: "Assistant", icon: MessageSquare },
   { href: "/bookmarks", label: "Bookmarks", icon: Bookmark },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },

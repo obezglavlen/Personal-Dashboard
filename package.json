@@ -19,6 +19,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.216",
     "@auth/prisma-adapter": "^2.11.2",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -26,6 +27,7 @@
     "@fontsource/chakra-petch": "^5.2.7",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@hookform/resolvers": "^5.4.0",
+    "@openrouter/ai-sdk-provider": "^2.10.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@radix-ui/react-avatar": "^1.2.0",
@@ -39,6 +41,7 @@
     "@radix-ui/react-toast": "^1.2.17",
     "@radix-ui/react-tooltip": "^1.2.10",
     "@vercel/speed-insights": "^2.0.0",
+    "ai": "^6.0.214",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
