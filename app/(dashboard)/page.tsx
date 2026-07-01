@@ -7,9 +7,11 @@ import {
 	Receipt,
 	StickyNote,
 } from "lucide-react";
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
+import { dashboardTag } from "@/lib/cache-tags";
 import type { ReactNode } from "react";
 import { StatCard } from "@/components/shared/stat-card";
 import {
@@ -39,7 +41,63 @@ export default async function DashboardPage() {
 	if (!session?.user?.id) redirect("/login");
 	const userId = session.user.id;
 
-	const [
+	// Cache the whole aggregate in the Next Data Cache so rapid reloads don't
+	// re-run these ~10 queries against the DB every time. Keyed by userId and
+	// tagged dashboard:<userId>, which every CRUD write busts via revalidateTag
+	// (see lib/api/crud.ts) — so counts stay fresh after a mutation; revalidate
+	// is only a fallback ceiling. Selects are trimmed to the rendered fields to
+	// keep the cached payload lean and free of Date values.
+	const loadDashboardData = unstable_cache(
+		async (uid: string) => {
+			const [
+				bookmarkCount,
+				noteCount,
+				taskCount,
+				completedTasks,
+				subscriptionCount,
+				taxConfigCount,
+				taxRecordCount,
+				settings,
+			] = await Promise.all([
+				prisma.bookmark.count({ where: { userId: uid } }),
+				prisma.note.count({ where: { userId: uid } }),
+				prisma.task.count({ where: { userId: uid } }),
+				prisma.task.count({ where: { userId: uid, status: "done" } }),
+				prisma.subscription.count({ where: { userId: uid } }),
+				prisma.taxConfig.count({ where: { userId: uid } }),
+				prisma.taxRecord.count({ where: { userId: uid } }),
+				prisma.userSettings.findUnique({ where: { userId: uid } }),
+			]);
+			const recentBookmarks = await prisma.bookmark.findMany({
+				where: { userId: uid },
+				orderBy: { createdAt: "desc" },
+				take: 5,
+				select: { id: true, url: true, title: true },
+			});
+			const recentTasks = await prisma.task.findMany({
+				where: { userId: uid },
+				orderBy: { createdAt: "desc" },
+				take: 5,
+				select: { id: true, title: true, status: true },
+			});
+			return {
+				bookmarkCount,
+				noteCount,
+				taskCount,
+				completedTasks,
+				subscriptionCount,
+				taxConfigCount,
+				taxRecordCount,
+				dashboardLayout: settings?.dashboardLayout ?? null,
+				recentBookmarks,
+				recentTasks,
+			};
+		},
+		["dashboard-aggregate"],
+		{ tags: [dashboardTag(userId)], revalidate: 60 },
+	);
+
+	const {
 		bookmarkCount,
 		noteCount,
 		taskCount,
@@ -47,31 +105,12 @@ export default async function DashboardPage() {
 		subscriptionCount,
 		taxConfigCount,
 		taxRecordCount,
-		settings,
-	] = await Promise.all([
-		prisma.bookmark.count({ where: { userId } }),
-		prisma.note.count({ where: { userId } }),
-		prisma.task.count({ where: { userId } }),
-		prisma.task.count({ where: { userId, status: "done" } }),
-		prisma.subscription.count({ where: { userId } }),
-		prisma.taxConfig.count({ where: { userId } }),
-		prisma.taxRecord.count({ where: { userId } }),
-		prisma.userSettings.findUnique({ where: { userId } }),
-	]);
+		dashboardLayout,
+		recentBookmarks,
+		recentTasks,
+	} = await loadDashboardData(userId);
 
-	const { order, hidden } = resolveLayout(settings?.dashboardLayout);
-
-	const recentBookmarks = await prisma.bookmark.findMany({
-		where: { userId },
-		orderBy: { createdAt: "desc" },
-		take: 5,
-	});
-
-	const recentTasks = await prisma.task.findMany({
-		where: { userId },
-		orderBy: { createdAt: "desc" },
-		take: 5,
-	});
+	const { order, hidden } = resolveLayout(dashboardLayout);
 
 	const completionRate =
 		taskCount > 0 ? Math.round((completedTasks / taskCount) * 100) : 0;

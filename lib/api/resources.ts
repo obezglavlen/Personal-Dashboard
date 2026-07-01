@@ -80,6 +80,7 @@ export const serializeExpense = (e: Row) => ({
 });
 
 export const noteHandlers = crudHandlers({
+	resource: "note",
 	delegate: prisma.note,
 	createSchema: noteSchema,
 	updateSchema: noteSchema,
@@ -87,6 +88,7 @@ export const noteHandlers = crudHandlers({
 });
 
 export const bookmarkHandlers = crudHandlers({
+	resource: "bookmark",
 	delegate: prisma.bookmark,
 	createSchema: bookmarkSchema,
 	updateSchema: bookmarkSchema,
@@ -94,6 +96,7 @@ export const bookmarkHandlers = crudHandlers({
 });
 
 export const taskHandlers = crudHandlers({
+	resource: "task",
 	delegate: prisma.task,
 	createSchema: taskSchema,
 	updateSchema: taskSchema.partial(),
@@ -112,6 +115,7 @@ export const taskHandlers = crudHandlers({
 });
 
 export const subscriptionHandlers = crudHandlers({
+	resource: "subscription",
 	delegate: prisma.subscription,
 	createSchema: subscriptionSchema,
 	updateSchema: subscriptionSchema.partial(),
@@ -131,6 +135,7 @@ export const subscriptionHandlers = crudHandlers({
 });
 
 export const taxConfigHandlers = crudHandlers({
+	resource: "taxConfig",
 	delegate: prisma.taxConfig,
 	createSchema: taxConfigSchema,
 	updateSchema: taxConfigSchema.partial(),
@@ -139,6 +144,7 @@ export const taxConfigHandlers = crudHandlers({
 });
 
 export const taxRecordHandlers = crudHandlers({
+	resource: "taxRecord",
 	delegate: prisma.taxRecord,
 	createSchema: taxRecordSchema,
 	updateSchema: taxRecordSchema.partial(),
@@ -194,6 +200,7 @@ export const serializeGoal = (g: Row) => ({
 });
 
 export const accountHandlers = crudHandlers({
+	resource: "account",
 	delegate: prisma.financialAccount,
 	createSchema: accountSchema,
 	updateSchema: accountSchema.partial(),
@@ -208,6 +215,7 @@ export const accountHandlers = crudHandlers({
 });
 
 export const goalHandlers = crudHandlers({
+	resource: "goal",
 	delegate: prisma.goal,
 	createSchema: goalSchema,
 	updateSchema: goalSchema.partial(),
@@ -222,6 +230,7 @@ export const goalHandlers = crudHandlers({
 });
 
 export const budgetHandlers = crudHandlers({
+	resource: "budget",
 	delegate: prisma.budget,
 	createSchema: budgetSchema,
 	updateSchema: budgetSchema.partial(),
@@ -237,6 +246,7 @@ export const budgetHandlers = crudHandlers({
 });
 
 export const expenseHandlers = crudHandlers({
+	resource: "expense",
 	delegate: prisma.expense,
 	createSchema: expenseSchema,
 	updateSchema: expenseSchema.partial(),
