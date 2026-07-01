@@ -33,6 +33,7 @@ import {
 import { TagInput } from "@/components/ui/tag-input";
 import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 import { convertToBase, formatMoney } from "@/lib/format";
+import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
@@ -46,7 +47,6 @@ type Recurring = {
 	startDate: string;
 	endDate: string | null;
 	currency: string;
-	category: string | null;
 	tags: string[];
 	autoPost: boolean;
 	lastPostedAt: string | null;
@@ -60,7 +60,6 @@ type Form = {
 	period: "monthly" | "annual";
 	startDate: string;
 	endDate: string;
-	category: string;
 	tags: string[];
 	autoPost: boolean;
 };
@@ -73,7 +72,6 @@ const EMPTY: Form = {
 	period: "monthly",
 	startDate: new Date().toISOString().slice(0, 10),
 	endDate: "",
-	category: "",
 	tags: [],
 	autoPost: false,
 };
@@ -211,7 +209,7 @@ export function RecurringClient() {
 									</div>
 									<p className="mt-1 text-xs capitalize text-muted-foreground">
 										{r.period}
-										{r.category ? ` · ${r.category}` : ""}
+										{r.tags.length ? ` · ${r.tags.join(", ")}` : ""}
 									</p>
 									<p className="mt-2 text-lg font-bold tabular-nums">
 										{formatMoney(r.amount, r.currency)}
@@ -302,6 +300,7 @@ function RecurringDialog({
 	onSaved: () => void;
 }) {
 	const [form, setForm] = useState<Form>(EMPTY);
+	const tagSuggestions = useAllTags();
 
 	useEffect(() => {
 		if (!open) return;
@@ -315,7 +314,6 @@ function RecurringDialog({
 						period: edit.period,
 						startDate: edit.startDate.slice(0, 10),
 						endDate: edit.endDate ? edit.endDate.slice(0, 10) : "",
-						category: edit.category ?? "",
 						tags: edit.tags,
 						autoPost: edit.autoPost,
 					}
@@ -337,7 +335,6 @@ function RecurringDialog({
 			period: form.period,
 			startDate: form.startDate,
 			endDate: form.endDate || null,
-			category: form.category || null,
 			tags: form.tags,
 			autoPost: form.autoPost,
 		};
@@ -459,20 +456,12 @@ function RecurringDialog({
 						</div>
 					</div>
 					<div className="space-y-2">
-						<Label htmlFor="rec-category">Category (optional)</Label>
-						<Input
-							id="rec-category"
-							value={form.category}
-							onChange={(e) => set("category", e.target.value)}
-							placeholder="e.g. housing"
-						/>
-					</div>
-					<div className="space-y-2">
-						<Label>Tags (expenses)</Label>
+						<Label>Tags</Label>
 						<TagInput
 							value={form.tags}
 							onChange={(tags) => set("tags", tags)}
-							placeholder="Add a tag…"
+							suggestions={tagSuggestions}
+							placeholder="e.g. housing, salary…"
 						/>
 					</div>
 					<label className="flex items-center gap-2 text-sm">

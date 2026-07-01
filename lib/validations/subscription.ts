@@ -8,7 +8,7 @@ export const subscriptionSchema = z.object({
     .pipe(z.number().nonnegative("Price must be >= 0").finite()),
   period: z.enum(["monthly", "annual"]),
   startDate: z.string().optional(),
-  category: z.string().max(60).optional().nullable(),
+  tags: z.array(z.string().min(1).max(40)).max(20).optional(),
   currency: z.string().length(3).default("USD"),
   autoExpense: z.boolean().optional(),
 });

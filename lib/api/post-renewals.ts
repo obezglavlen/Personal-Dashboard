@@ -47,7 +47,7 @@ export async function postDueRenewals(
 					amount: s.price,
 					currency: s.currency,
 					date: d,
-					tags: s.category ? [s.category, "subscription"] : ["subscription"],
+					tags: Array.from(new Set([...s.tags, "subscription"])),
 				})),
 			}),
 			prisma.subscription.update({

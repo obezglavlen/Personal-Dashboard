@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { useResource } from "@/lib/hooks/use-resource";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TagInput } from "@/components/ui/tag-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -14,7 +16,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Trash2, Pin, Plus, X, StickyNote, Search } from "lucide-react";
+import { Trash2, Pin, Plus, StickyNote, Search } from "lucide-react";
 
 type Note = {
   id: string;
@@ -32,8 +34,8 @@ export function NoteClient() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", content: "", tags: [] as string[], pinned: false });
-  const [tagInput, setTagInput] = useState("");
   const [search, setSearch] = useState("");
+  const tagSuggestions = useAllTags();
 
   function startNew() {
     setEditingId(null);
@@ -45,17 +47,6 @@ export function NoteClient() {
     setEditingId(note.id);
     setForm({ title: note.title, content: note.content, tags: note.tags, pinned: note.pinned });
     setShowForm(true);
-  }
-
-  function addTag() {
-    if (tagInput.trim() && !form.tags.includes(tagInput.trim())) {
-      setForm({ ...form, tags: [...form.tags, tagInput.trim()] });
-      setTagInput("");
-    }
-  }
-
-  function removeTag(tag: string) {
-    setForm({ ...form, tags: form.tags.filter((t) => t !== tag) });
   }
 
   async function saveNote(e: React.FormEvent) {
@@ -152,35 +143,12 @@ export function NoteClient() {
                 </div>
                 <div className="space-y-2">
                   <Label>Tags</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addTag();
-                        }
-                      }}
-                      placeholder="Add tag..."
-                    />
-                    <Button type="button" onClick={addTag} variant="secondary">Add</Button>
-                  </div>
-                  {form.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {form.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                          {tag}
-                          <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove ${tag}`}>
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  <TagInput
+                    value={form.tags}
+                    onChange={(tags) => setForm({ ...form, tags })}
+                    suggestions={tagSuggestions}
+                    placeholder="Add tag…"
+                  />
                 </div>
                 <DialogFooter className="gap-2 sm:gap-2">
                   <Button type="button" variant="outline" onClick={() => setShowForm(false)}>

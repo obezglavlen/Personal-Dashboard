@@ -20,7 +20,6 @@ export interface DigestSubscription {
 	period: Period;
 	startDate: string;
 	currency: string;
-	category?: string | null;
 }
 
 export interface DigestBudget extends BudgetLike {

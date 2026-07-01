@@ -32,6 +32,23 @@ model User {
   goals             Goal[]
   netWorthSnapshots NetWorthSnapshot[]
   recurringTransactions RecurringTransaction[]
+  tags              Tag[]
+}
+
+// Per-user tag catalog: the shared set of tags used for autocomplete across all
+// tag-bearing modals (expenses, budgets, subscriptions, recurring, notes). Tags
+// stay stored denormalized as `String[]` on each record; this table is the
+// union kept in sync on every save, so a tag used anywhere is suggested
+// everywhere.
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Account {
@@ -145,7 +162,8 @@ model Subscription {
   price     Decimal  @db.Decimal(10, 2)
   period    String
   startDate DateTime @default(now())
-  category  String?
+  // Free-form tags (shared with expenses/budgets/recurring via the Tag catalog).
+  tags      String[]
   currency  String   @default("USD")
   // When true, renewals are auto-posted as Expense rows. `lastPostedAt` records
   // the most recent renewal date already posted, so posting stays idempotent.
@@ -269,7 +287,6 @@ model RecurringTransaction {
   startDate    DateTime  @default(now())
   endDate      DateTime?
   currency     String    @default("USD")
-  category     String?
   tags         String[]
   autoPost     Boolean   @default(false)
   lastPostedAt DateTime?

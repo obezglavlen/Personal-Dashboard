@@ -24,7 +24,6 @@ interface RenewableLike {
 	period: Period;
 	startDate: string;
 	currency: string;
-	category?: string | null;
 }
 
 export interface UpcomingRenewal<T extends RenewableLike> {

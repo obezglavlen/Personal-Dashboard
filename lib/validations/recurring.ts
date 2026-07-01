@@ -11,7 +11,6 @@ export const recurringSchema = z.object({
 	startDate: z.string().optional(),
 	endDate: z.string().optional().nullable(),
 	currency: z.string().length(3).optional(),
-	category: z.string().max(60).optional().nullable(),
 	tags: z.array(z.string().min(1).max(40)).max(20).optional(),
 	autoPost: z.boolean().optional(),
 });

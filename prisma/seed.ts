@@ -66,10 +66,10 @@ async function main() {
 
   await prisma.subscription.createMany({
     data: [
-      { userId: user.id, name: "Netflix",  price: 15.99, period: "monthly", category: "entertainment" },
-      { userId: user.id, name: "Spotify",  price: 9.99,  period: "monthly", category: "entertainment" },
-      { userId: user.id, name: "iCloud+",  price: 2.99,  period: "monthly", category: "storage"      },
-      { userId: user.id, name: "GitHub Pro", price: 48,   period: "annual",  category: "dev"          },
+      { userId: user.id, name: "Netflix",  price: 15.99, period: "monthly", tags: ["entertainment"] },
+      { userId: user.id, name: "Spotify",  price: 9.99,  period: "monthly", tags: ["entertainment"] },
+      { userId: user.id, name: "iCloud+",  price: 2.99,  period: "monthly", tags: ["storage"]       },
+      { userId: user.id, name: "GitHub Pro", price: 48,   period: "annual",  tags: ["dev"]           },
     ],
     skipDuplicates: true,
   });
@@ -79,6 +79,14 @@ async function main() {
       { userId: user.id, name: "VAT",        rate: 20, staticAmount: 1000, currency: "USD" },
       { userId: user.id, name: "Income Tax", rate: 13, staticAmount: 500,  currency: "EUR" },
     ],
+    skipDuplicates: true,
+  });
+
+  // Seed the shared tag catalog from the tags used above (seed inserts bypass
+  // the API's automatic tag-sync).
+  const seededTags = ["welcome", "entertainment", "storage", "dev"];
+  await prisma.tag.createMany({
+    data: seededTags.map((name) => ({ userId: user.id, name })),
     skipDuplicates: true,
   });
 

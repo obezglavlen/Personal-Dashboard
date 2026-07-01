@@ -45,11 +45,6 @@ export async function postDueRecurring(
 		});
 
 		if (r.type === "expense") {
-			const tags = r.tags.length
-				? r.tags
-				: r.category
-					? [r.category]
-					: [];
 			await prisma.$transaction([
 				prisma.expense.createMany({
 					data: due.map((d) => ({
@@ -58,7 +53,7 @@ export async function postDueRecurring(
 						amount: r.amount,
 						currency: r.currency,
 						date: d,
-						tags,
+						tags: r.tags,
 					})),
 				}),
 				advance,

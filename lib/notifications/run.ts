@@ -57,7 +57,6 @@ export async function sendDailyDigests(
 					period: x.period as Period,
 					startDate: x.startDate.toISOString(),
 					currency: x.currency,
-					category: x.category,
 				})),
 				budgets: budgets.map((b) => ({
 					name: b.name,
