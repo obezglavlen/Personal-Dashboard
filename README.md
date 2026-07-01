@@ -143,6 +143,7 @@ Legend: ✅ Required · ⚠️ Required for that feature only · ⬜ Optional
 | Variable | Required? | What it does | If missing | How to get it / value |
 |---|---|---|---|---|
 | `DATABASE_URL` | ✅ | Postgres connection. Used by build-time migrations **and** at runtime via the `pg` adapter. | Build fails at `prisma migrate deploy`; app can't start. | Direct Postgres URL `postgresql://user:pass@host:5432/db?sslmode=require`. From Vercel Storage / Neon / Supabase (Step 1). |
+| `DATABASE_POOL_MAX` | ⬜ | Max connections in the `pg` pool. The small default suits Prisma Postgres's low direct-connection limit and keeps a query burst (e.g. the dashboard) from exhausting the upstream. | Defaults to `3`. | Integer. Raise on a bigger DB — e.g. `10` to match `pg`'s old default, or higher (bounded by your DB's own connection limit). No true "unlimited". |
 | `NEXTAUTH_SECRET` | ✅ | Signs the NextAuth session (JWT) cookies. | NextAuth refuses to run in production; login is broken. | Generate one (see command below). |
 | `NEXTAUTH_URL` | ✅ | Canonical site URL for auth callbacks/redirects. | Login redirects break. | Your deployment URL, e.g. `https://your-app.vercel.app` (no trailing slash). |
 | `CRON_SECRET` | ⚠️ crons | Guards `/api/cron/*`. Vercel Cron sends it as a Bearer token. | Cron endpoints return `503`; daily renewals + digest never run. | Generate one (see command below). |
