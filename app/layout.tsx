@@ -39,11 +39,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <head>
-        {/* iOS home-screen icon — falls back to favicon if apple-touch-icon.png
-            is not present in /public. */}
-        <link rel="apple-touch-icon" href="/favicon.ico" />
-      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Providers>{children}</Providers>
         <SpeedInsights />

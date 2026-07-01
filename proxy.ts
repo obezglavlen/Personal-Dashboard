@@ -96,6 +96,11 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
 	// Page auth runs on everything except login/static; rate limiting needs the
-	// API surface too, so `api` is no longer excluded from the matcher.
-	matcher: ["/((?!login|_next/static|_next/image|favicon.ico).*)"],
+	// API surface too, so `api` is no longer excluded from the matcher. The PWA
+	// metadata routes (manifest + generated icons) must stay public so the
+	// browser can fetch them from the unauthenticated login screen to offer
+	// install — otherwise auth would redirect them to /login.
+	matcher: [
+		"/((?!login|manifest.webmanifest|icon|apple-icon|_next/static|_next/image|favicon.ico).*)",
+	],
 };
