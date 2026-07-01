@@ -5,9 +5,19 @@ import { budgetSchema } from "@/lib/validations/budget";
 import { expenseSchema } from "@/lib/validations/expense";
 import { goalSchema } from "@/lib/validations/goal";
 import { noteSchema } from "@/lib/validations/note";
+import { recurringSchema } from "@/lib/validations/recurring";
 import { subscriptionSchema } from "@/lib/validations/subscription";
 import { taskSchema } from "@/lib/validations/task";
 import { taxConfigSchema, taxRecordSchema } from "@/lib/validations/tax";
+import {
+	buildAccountData,
+	buildBudgetData,
+	buildExpenseData,
+	buildGoalData,
+	buildRecurringData,
+	buildSubscriptionData,
+	buildTaskData,
+} from "./build-data";
 import { crudHandlers } from "./crud";
 
 /**
@@ -98,11 +108,7 @@ export const taskHandlers = crudHandlers({
 	createSchema: taskSchema,
 	updateSchema: taskSchema.partial(),
 	orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-	toCreateData: ({ dueDate, ...rest }, userId) => ({
-		...rest,
-		dueDate: dueDate ? new Date(dueDate) : null,
-		userId,
-	}),
+	toCreateData: buildTaskData,
 	toUpdateData: ({ dueDate, ...rest }) => ({
 		...rest,
 		...(dueDate !== undefined && {
@@ -117,11 +123,7 @@ export const subscriptionHandlers = crudHandlers({
 	updateSchema: subscriptionSchema.partial(),
 	orderBy: [{ createdAt: "desc" }],
 	serialize: serializeSubscription,
-	toCreateData: ({ startDate, ...rest }, userId) => ({
-		...rest,
-		startDate: startDate ? new Date(startDate) : new Date(),
-		userId,
-	}),
+	toCreateData: buildSubscriptionData,
 	toUpdateData: ({ startDate, ...rest }) => ({
 		...rest,
 		...(startDate !== undefined && {
@@ -199,12 +201,7 @@ export const accountHandlers = crudHandlers({
 	updateSchema: accountSchema.partial(),
 	orderBy: [{ createdAt: "desc" }],
 	serialize: serializeAccount,
-	toCreateData: ({ currency, type, ...rest }, userId) => ({
-		...rest,
-		currency: currency ?? "USD",
-		type: type ?? "cash",
-		userId,
-	}),
+	toCreateData: buildAccountData,
 });
 
 export const goalHandlers = crudHandlers({
@@ -213,12 +210,7 @@ export const goalHandlers = crudHandlers({
 	updateSchema: goalSchema.partial(),
 	orderBy: [{ createdAt: "desc" }],
 	serialize: serializeGoal,
-	toCreateData: ({ currency, current, ...rest }, userId) => ({
-		...rest,
-		currency: currency ?? "USD",
-		current: current ?? 0,
-		userId,
-	}),
+	toCreateData: buildGoalData,
 });
 
 export const budgetHandlers = crudHandlers({
@@ -227,13 +219,7 @@ export const budgetHandlers = crudHandlers({
 	updateSchema: budgetSchema.partial(),
 	orderBy: [{ createdAt: "desc" }],
 	serialize: serializeBudget,
-	toCreateData: ({ currency, tags, period, ...rest }, userId) => ({
-		...rest,
-		currency: currency ?? "USD",
-		tags: tags ?? [],
-		period: period ?? "monthly",
-		userId,
-	}),
+	toCreateData: buildBudgetData,
 });
 
 export const expenseHandlers = crudHandlers({
@@ -242,15 +228,45 @@ export const expenseHandlers = crudHandlers({
 	updateSchema: expenseSchema.partial(),
 	orderBy: [{ date: "desc" }, { createdAt: "desc" }],
 	serialize: serializeExpense,
-	toCreateData: ({ date, currency, tags, ...rest }, userId) => ({
-		...rest,
-		currency: currency ?? "USD",
-		tags: tags ?? [],
-		date: date ? new Date(date) : new Date(),
-		userId,
-	}),
+	toCreateData: buildExpenseData,
 	toUpdateData: ({ date, ...rest }) => ({
 		...rest,
 		...(date !== undefined && { date: date ? new Date(date) : new Date() }),
+	}),
+});
+
+export const serializeRecurring = (r: Row) => ({
+	id: r.id,
+	userId: r.userId,
+	name: r.name,
+	amount: num(r.amount),
+	type: r.type,
+	period: r.period,
+	startDate: iso(r.startDate),
+	endDate: r.endDate ? iso(r.endDate) : null,
+	currency: r.currency,
+	category: r.category,
+	tags: r.tags,
+	autoPost: r.autoPost,
+	lastPostedAt: r.lastPostedAt ? iso(r.lastPostedAt) : null,
+	createdAt: iso(r.createdAt),
+	updatedAt: iso(r.updatedAt),
+});
+
+export const recurringHandlers = crudHandlers({
+	delegate: prisma.recurringTransaction,
+	createSchema: recurringSchema,
+	updateSchema: recurringSchema.partial(),
+	orderBy: [{ createdAt: "desc" }],
+	serialize: serializeRecurring,
+	toCreateData: buildRecurringData,
+	toUpdateData: ({ startDate, endDate, ...rest }) => ({
+		...rest,
+		...(startDate !== undefined && {
+			startDate: startDate ? new Date(startDate) : new Date(),
+		}),
+		...(endDate !== undefined && {
+			endDate: endDate ? new Date(endDate) : null,
+		}),
 	}),
 });

@@ -30,6 +30,8 @@ type SettingsData = {
 	notifyRenewals: boolean;
 	notifyBudgets: boolean;
 	notifyTasks: boolean;
+	notifyInsights: boolean;
+	budgetAlertThreshold: number;
 };
 
 export function SettingsClient() {
@@ -41,6 +43,8 @@ export function SettingsClient() {
 	const [notifyRenewals, setNotifyRenewals] = useState(true);
 	const [notifyBudgets, setNotifyBudgets] = useState(true);
 	const [notifyTasks, setNotifyTasks] = useState(true);
+	const [notifyInsights, setNotifyInsights] = useState(true);
+	const [budgetAlertThreshold, setBudgetAlertThreshold] = useState(80);
 	const [savingNotif, setSavingNotif] = useState(false);
 	const [testingNotif, setTestingNotif] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +62,8 @@ export function SettingsClient() {
 				setNotifyRenewals(data.notifyRenewals);
 				setNotifyBudgets(data.notifyBudgets);
 				setNotifyTasks(data.notifyTasks);
+				setNotifyInsights(data.notifyInsights ?? true);
+				setBudgetAlertThreshold(data.budgetAlertThreshold ?? 80);
 			})
 			.catch(() => toast.error("Failed to load settings"));
 	}, []);
@@ -95,6 +101,13 @@ export function SettingsClient() {
 				notifyRenewals,
 				notifyBudgets,
 				notifyTasks,
+				notifyInsights,
+				// Clamp into the API's accepted [1,100]; a cleared field coerces to 0
+				// (Number("") === 0), which would otherwise 400 the entire save.
+				budgetAlertThreshold: Math.min(
+					100,
+					Math.max(1, Math.round(budgetAlertThreshold) || 80),
+				),
 			});
 			toast.success("Notification settings saved");
 		} catch (err) {
@@ -337,6 +350,12 @@ export function SettingsClient() {
 										checked: notifyTasks,
 										set: setNotifyTasks,
 									},
+									{
+										id: "notify-insights",
+										label: "Monthly spending insight (1st of month)",
+										checked: notifyInsights,
+										set: setNotifyInsights,
+									},
 								].map((row) => (
 									<label
 										key={row.id}
@@ -354,6 +373,26 @@ export function SettingsClient() {
 									</label>
 								))}
 							</fieldset>
+							<div className="space-y-2">
+								<Label htmlFor="settings-budget-threshold">
+									Budget alert threshold (%)
+								</Label>
+								<Input
+									id="settings-budget-threshold"
+									type="number"
+									min={1}
+									max={100}
+									value={budgetAlertThreshold}
+									onChange={(e) =>
+										setBudgetAlertThreshold(Number(e.target.value))
+									}
+									className="w-28"
+								/>
+								<p className="text-xs text-muted-foreground">
+									A budget is flagged in the digest once spending reaches this
+									percent of its cap.
+								</p>
+							</div>
 							<div className="flex flex-wrap gap-2">
 								<Button type="submit" disabled={savingNotif}>
 									{savingNotif ? "Saving…" : "Save"}

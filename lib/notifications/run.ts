@@ -82,6 +82,7 @@ export async function sendDailyDigests(
 					renewals: s.notifyRenewals,
 					budgets: s.notifyBudgets,
 					tasks: s.notifyTasks,
+					budgetThreshold: (s.budgetAlertThreshold ?? 80) / 100,
 				},
 			};
 
