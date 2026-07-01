@@ -106,7 +106,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           type="button"
           onClick={onMobileClose}
           aria-label="Close navigation"
-          className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="absolute right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] inline-flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <X className="h-5 w-5" />
         </button>
@@ -119,7 +119,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 function NavBody({ pathname }: { pathname: string }) {
   return (
     <>
-      <div className="flex h-16 items-center border-b border-sidebar-border px-6">
+      {/* min-h + pt-safe so the iOS status-bar / Dynamic Island inset expands
+          this row (a fixed h-16 border-box would clip the padding). Applies to
+          both the desktop rail and the mobile drawer since both render NavBody. */}
+      <div className="flex min-h-16 items-center border-b border-sidebar-border px-6 pt-safe">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
             <LayoutDashboard className="h-4 w-4" />
