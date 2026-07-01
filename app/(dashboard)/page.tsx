@@ -8,6 +8,7 @@ import {
 	StickyNote,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import type { ReactNode } from "react";
 import { StatCard } from "@/components/shared/stat-card";
@@ -29,8 +30,14 @@ import { NetWorthWidget } from "./net-worth-widget";
 import { RenewalsWidget } from "./renewals-widget";
 
 export default async function DashboardPage() {
+	// Guard here too, not just in the layout: layout and page render in parallel
+	// in the App Router, so a null session (e.g. an iOS standalone PWA launched
+	// with no cookie — installed apps use a separate cookie jar from Safari)
+	// would hit `session!.user.id` and throw a 500 before the layout's redirect
+	// wins. Redirecting here turns that crash into a clean login bounce.
 	const session = await getServerSession(authOptions);
-	const userId = session!.user.id;
+	if (!session?.user?.id) redirect("/login");
+	const userId = session.user.id;
 
 	const [
 		bookmarkCount,
@@ -201,7 +208,7 @@ export default async function DashboardPage() {
 					Dashboard
 				</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Welcome back, {session!.user.name || "User"}.
+					Welcome back, {session.user.name || "User"}.
 				</p>
 			</div>
 
