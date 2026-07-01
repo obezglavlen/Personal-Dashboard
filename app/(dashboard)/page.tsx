@@ -11,7 +11,6 @@ import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { dashboardTag } from "@/lib/cache-tags";
 import type { ReactNode } from "react";
 import { StatCard } from "@/components/shared/stat-card";
 import {
@@ -42,11 +41,13 @@ export default async function DashboardPage() {
 	const userId = session.user.id;
 
 	// Cache the whole aggregate in the Next Data Cache so rapid reloads don't
-	// re-run these ~10 queries against the DB every time. Keyed by userId and
-	// tagged dashboard:<userId>, which every CRUD write busts via revalidateTag
-	// (see lib/api/crud.ts) — so counts stay fresh after a mutation; revalidate
-	// is only a fallback ceiling. Selects are trimmed to the rendered fields to
-	// keep the cached payload lean and free of Date values.
+	// re-run these ~10 queries against the DB every time. Keyed by userId with a
+	// short TTL: within the window a reload serves from cache, after it the
+	// counts refresh. Time-based (not tag-based) invalidation on purpose — these
+	// are read-mostly summary numbers, so a brief staleness after a write
+	// elsewhere is fine, and it avoids coupling to Next 16's tag-revalidation
+	// API. Selects are trimmed to the rendered fields to keep the cached payload
+	// lean and free of Date values.
 	const loadDashboardData = unstable_cache(
 		async (uid: string) => {
 			const [
@@ -93,8 +94,8 @@ export default async function DashboardPage() {
 				recentTasks,
 			};
 		},
-		["dashboard-aggregate"],
-		{ tags: [dashboardTag(userId)], revalidate: 60 },
+		["dashboard-aggregate", userId],
+		{ revalidate: 15 },
 	);
 
 	const {
