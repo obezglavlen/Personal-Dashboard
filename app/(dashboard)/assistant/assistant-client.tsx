@@ -2,8 +2,11 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { Bot, Send, User, Wrench } from "lucide-react";
+import {
+	DefaultChatTransport,
+	lastAssistantMessageIsCompleteWithApprovalResponses,
+} from "ai";
+import { Bot, Check, Send, User, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +25,19 @@ const TOOL_LABELS: Record<string, string> = {
 	getExchangeRates: "exchange rates",
 };
 
+// Tools that write. These render an approval card (Confirm/Cancel) before the
+// write runs, then a success/denied/error pill — never the read-only badge.
+const WRITE_LABELS: Record<string, string> = {
+	createExpense: "expense",
+	createTask: "task",
+	createNote: "note",
+	createBookmark: "bookmark",
+	createBudget: "budget",
+	createSubscription: "subscription",
+	createGoal: "goal",
+	createFinancialAccount: "account",
+};
+
 const SUGGESTIONS = [
 	"How much did I spend this month?",
 	"Am I over any budget?",
@@ -30,9 +46,16 @@ const SUGGESTIONS = [
 ];
 
 export function AssistantClient() {
-	const { messages, sendMessage, status, error } = useChat({
-		transport: new DefaultChatTransport({ api: "/api/chat" }),
-	});
+	const { messages, sendMessage, status, error, addToolApprovalResponse } =
+		useChat({
+			transport: new DefaultChatTransport({ api: "/api/chat" }),
+			// After the user approves/denies a write tool, resubmit automatically
+			// so the server can run (or skip) the tool and continue the answer.
+			// The approval-specific helper fires ONLY when an approval was just
+			// responded — not after ordinary read-tool answers (which would cause
+			// a spurious extra round-trip).
+			sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
+		});
 	const [input, setInput] = useState("");
 	const endRef = useRef<HTMLDivElement>(null);
 	const busy = status === "submitted" || status === "streaming";
@@ -44,6 +67,28 @@ export function AssistantClient() {
 	const lastHasAnswerText =
 		last?.role === "assistant" &&
 		last.parts.some((p) => p.type === "text" && p.text.trim().length > 0);
+
+	// A write tool is waiting for the user's Confirm/Cancel. The assistant
+	// message then has a tool part but no answer text yet, so this suppresses
+	// the "no answer" fallback below.
+	const lastHasPendingApproval =
+		last?.role === "assistant" &&
+		last.parts.some(
+			(p) =>
+				p.type.startsWith("tool-") &&
+				(p as { state?: string }).state === "approval-requested",
+		);
+
+	// Any tool part (read badge or write pill) is itself visible content, so the
+	// "no answer" fallback below must not fire under it — e.g. a write completes
+	// with a "Created …" pill but the model adds no trailing sentence.
+	const lastHasToolActivity =
+		last?.role === "assistant" &&
+		last.parts.some((p) => p.type.startsWith("tool-"));
+
+	const handleApproval = (id: string, approved: boolean) => {
+		addToolApprovalResponse({ id, approved });
+	};
 
 	// Keep the latest message in view as tokens stream in.
 	useEffect(() => {
@@ -91,7 +136,9 @@ export function AssistantClient() {
 							</div>
 						</div>
 					) : (
-						messages.map((m) => <Message key={m.id} message={m} />)
+						messages.map((m) => (
+							<Message key={m.id} message={m} onApproval={handleApproval} />
+						))
 					)}
 					{busy && !lastHasAnswerText && (
 						<div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -106,11 +153,16 @@ export function AssistantClient() {
 					)}
 					{/* Model finished a turn but produced no answer text (e.g. it put
 					    everything in reasoning, or a tool step returned nothing). */}
-					{!busy && !error && last?.role === "assistant" && !lastHasAnswerText && (
-						<div className="text-sm text-muted-foreground">
-							No answer was returned. Try rephrasing or ask again.
-						</div>
-					)}
+					{!busy &&
+						!error &&
+						last?.role === "assistant" &&
+						!lastHasAnswerText &&
+						!lastHasPendingApproval &&
+						!lastHasToolActivity && (
+							<div className="text-sm text-muted-foreground">
+								No answer was returned. Try rephrasing or ask again.
+							</div>
+						)}
 					<div ref={endRef} />
 				</CardContent>
 			</Card>
@@ -140,7 +192,13 @@ export function AssistantClient() {
 
 type ChatMessage = ReturnType<typeof useChat>["messages"][number];
 
-function Message({ message }: { message: ChatMessage }) {
+function Message({
+	message,
+	onApproval,
+}: {
+	message: ChatMessage;
+	onApproval: (id: string, approved: boolean) => void;
+}) {
 	const isUser = message.role === "user";
 	return (
 		<div className={cn("flex gap-3", isUser && "flex-row-reverse")}>
@@ -196,6 +254,16 @@ function Message({ message }: { message: ChatMessage }) {
 					}
 					if (part.type.startsWith("tool-")) {
 						const name = part.type.slice("tool-".length);
+						if (name in WRITE_LABELS) {
+							return (
+								<WriteToolPart
+									key={i}
+									name={name}
+									part={part as unknown as ToolUIPartLike}
+									onApproval={onApproval}
+								/>
+							);
+						}
 						return (
 							<div
 								key={i}
@@ -211,6 +279,144 @@ function Message({ message }: { message: ChatMessage }) {
 			</div>
 		</div>
 	);
+}
+
+/**
+ * Minimal shape of an ai-sdk tool UI part (the full union is generic over the
+ * tool set; we only read these fields). A write tool moves through
+ * approval-requested -> approval-responded -> output-available|denied|error.
+ */
+type ToolUIPartLike = {
+	type: string;
+	toolCallId: string;
+	state:
+		| "input-streaming"
+		| "input-available"
+		| "approval-requested"
+		| "approval-responded"
+		| "output-available"
+		| "output-denied"
+		| "output-error";
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+	errorText?: string;
+	approval?: { id: string; approved?: boolean };
+};
+
+/** One-line summary of a create tool's input/output for the approval card. */
+function summarizeWrite(obj: Record<string, unknown> | undefined): string {
+	if (!obj) return "";
+	const out: string[] = [];
+	const label = obj.name ?? obj.title ?? obj.url;
+	if (label) out.push(String(label));
+	const money = obj.amount ?? obj.price ?? obj.target ?? obj.balance;
+	if (money !== undefined && money !== null) {
+		const cur = typeof obj.currency === "string" ? ` ${obj.currency}` : "";
+		out.push(`${money}${cur}`);
+	}
+	if (typeof obj.dueDate === "string" && obj.dueDate) out.push(`due ${obj.dueDate}`);
+	else if (typeof obj.date === "string" && obj.date) out.push(obj.date);
+	return out.join(" · ");
+}
+
+function StatusPill({
+	label,
+	icon = "wrench",
+	tone,
+}: {
+	label: string;
+	icon?: "check" | "x" | "wrench";
+	tone?: "error";
+}) {
+	const Icon = icon === "check" ? Check : icon === "x" ? X : Wrench;
+	return (
+		<div
+			className={cn(
+				"inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs",
+				tone === "error"
+					? "bg-destructive/10 text-destructive"
+					: "bg-accent text-accent-foreground",
+			)}
+		>
+			<Icon className="h-3 w-3" />
+			{label}
+		</div>
+	);
+}
+
+/** Renders a write tool: approval card, then success/denied/error state. */
+function WriteToolPart({
+	name,
+	part,
+	onApproval,
+}: {
+	name: string;
+	part: ToolUIPartLike;
+	onApproval: (id: string, approved: boolean) => void;
+}) {
+	const label = WRITE_LABELS[name] ?? name;
+
+	if (part.state === "approval-requested" && part.approval) {
+		const id = part.approval.id;
+		return (
+			<div className="flex flex-col gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm">
+				<div className="flex items-center gap-1.5 text-muted-foreground">
+					<Wrench className="h-3.5 w-3.5" />
+					<span>Create {label}?</span>
+				</div>
+				<p className="font-medium text-foreground">
+					{summarizeWrite(part.input) || `New ${label}`}
+				</p>
+				<div className="flex gap-2">
+					<Button type="button" size="sm" onClick={() => onApproval(id, true)}>
+						<Check className="h-4 w-4" />
+						Confirm
+					</Button>
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						onClick={() => onApproval(id, false)}
+					>
+						<X className="h-4 w-4" />
+						Cancel
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
+	if (part.state === "approval-responded") {
+		return part.approval?.approved ? (
+			<StatusPill label={`Saving ${label}…`} />
+		) : null;
+	}
+
+	if (part.state === "output-available") {
+		const detail = summarizeWrite(part.output);
+		return (
+			<StatusPill
+				icon="check"
+				label={`Created ${label}${detail ? `: ${detail}` : ""}`}
+			/>
+		);
+	}
+
+	if (part.state === "output-denied") {
+		return <StatusPill icon="x" label={`Cancelled — ${label} not created`} />;
+	}
+
+	if (part.state === "output-error") {
+		return (
+			<StatusPill
+				icon="x"
+				tone="error"
+				label={`Couldn't create ${label}${part.errorText ? `: ${part.errorText}` : ""}`}
+			/>
+		);
+	}
+
+	return <StatusPill label={`Preparing ${label}…`} />;
 }
 
 /** Inline `**bold**` and `` `code` `` within one line; everything else literal. */

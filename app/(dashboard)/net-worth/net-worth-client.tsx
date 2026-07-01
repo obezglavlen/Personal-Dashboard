@@ -28,6 +28,7 @@ import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
 import { ACCOUNT_TYPES } from "@/lib/validations/account";
+import { NetWorthTrend } from "./net-worth-trend";
 
 type Account = {
 	id: string;
@@ -133,6 +134,9 @@ export function NetWorthClient() {
 					</CardContent>
 				</Card>
 			</div>
+
+			{/* Trend */}
+			<NetWorthTrend />
 
 			{/* Accounts */}
 			<section className="space-y-3">

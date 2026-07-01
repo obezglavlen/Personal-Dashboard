@@ -4,34 +4,32 @@ import {
 	streamText,
 	type UIMessage,
 } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { prisma } from "@/lib/db";
 import { requireUserId } from "@/lib/api/session";
-import { toErrorResponse } from "@/lib/api/errors";
+import { ApiError, toErrorResponse } from "@/lib/api/errors";
 import { buildTools } from "@/lib/ai/tools";
+import { CHAT_MODEL, getOpenRouter, REASONING_EFFORT } from "@/lib/ai/openrouter";
 
 // The agent loops over tool calls, so it can run longer than a plain request.
 // Vercel caps this per plan — raise on Pro if multi-step answers get cut off.
 export const maxDuration = 30;
 
-// Cheap, tool-calling-capable model by default; override per deploy.
-const MODEL = process.env.CHAT_MODEL ?? "deepseek/deepseek-chat";
-
-// Reasoning effort for reasoning-capable models. "minimal" keeps answers fast;
-// "none" disables reasoning entirely. One of: xhigh|high|medium|low|minimal|none.
-const REASONING_EFFORT = (process.env.REASONING_EFFORT ??
-	"minimal") as "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
-
 function systemPrompt(currency: string): string {
 	const today = new Date().toISOString().slice(0, 10);
 	return [
 		"You are the assistant for a personal home dashboard.",
-		"You answer questions about THIS user's own data: expenses, budgets,",
-		"subscriptions, tasks, net worth, goals, taxes, notes, and bookmarks.",
+		"You answer questions about — and can create records in — THIS user's own",
+		"data: expenses, budgets, subscriptions, tasks, net worth, goals, taxes,",
+		"notes, and bookmarks.",
 		"",
 		"Rules:",
-		"- Only use the provided tools to get data. Never invent numbers, dates,",
-		"  or records. If a tool returns nothing, say so plainly.",
+		"- Use the get* tools to read data. Never invent numbers, dates, or",
+		"  records. If a tool returns nothing, say so plainly.",
+		"- Use the create* tools to add records when the user clearly asks you to",
+		"  (e.g. 'log $12 lunch', 'add a task'). Each create is shown to the user",
+		"  for approval before it is saved, so call it once with your best guess",
+		"  of the fields rather than asking many follow-up questions. Do not claim",
+		"  a record was saved unless the tool returns a successful result.",
 		"- Money is grouped by currency. Do not sum across currencies unless you",
 		"  first call getExchangeRates and convert; show your conversion.",
 		`- The user's default display currency is ${currency}.`,
@@ -56,12 +54,15 @@ export async function POST(req: Request) {
 		select: { currency: true },
 	});
 
-	const openrouter = createOpenRouter({
-		apiKey: process.env.OPENROUTER_API_KEY,
-	});
+	const openrouter = getOpenRouter();
+	if (!openrouter) {
+		return toErrorResponse(
+			new ApiError(503, "OPENROUTER_API_KEY not configured"),
+		);
+	}
 
 	const result = streamText({
-		model: openrouter.chat(MODEL),
+		model: openrouter.chat(CHAT_MODEL),
 		system: systemPrompt(settings?.currency ?? "USD"),
 		messages: await convertToModelMessages(messages),
 		tools: buildTools(userId),

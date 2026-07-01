@@ -18,6 +18,7 @@ import {
   BarChart3,
   Landmark,
   MessageSquare,
+  Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ export const navItems = [
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/subscriptions", label: "Subscriptions", icon: Receipt },
+  { href: "/recurring", label: "Recurring", icon: Repeat },
   { href: "/expenses", label: "Expenses", icon: Wallet },
   { href: "/budgets", label: "Budgets", icon: PiggyBank },
   { href: "/net-worth", label: "Net Worth", icon: Landmark },

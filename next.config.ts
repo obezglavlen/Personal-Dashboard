@@ -17,6 +17,8 @@ const csp = [
 	"form-action 'self'",
 	"img-src 'self' data: https:",
 	"font-src 'self' data:",
+	// Allow the same-origin service worker (public/sw.js) to register.
+	"worker-src 'self'",
 	"style-src 'self' 'unsafe-inline'",
 	isProd
 		? "script-src 'self' 'unsafe-inline'"

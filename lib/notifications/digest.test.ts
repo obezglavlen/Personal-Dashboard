@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDigest, type DigestData } from "./digest";
+import { buildDigest, DEFAULT_BUDGET_THRESHOLD, type DigestData } from "./digest";
 
 const now = new Date("2026-06-15T00:00:00Z");
 
@@ -11,7 +11,12 @@ function base(overrides: Partial<DigestData> = {}): DigestData {
 		tasks: [],
 		displayCurrency: "USD",
 		rates: {},
-		prefs: { renewals: true, budgets: true, tasks: true },
+		prefs: {
+			renewals: true,
+			budgets: true,
+			tasks: true,
+			budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
+		},
 		...overrides,
 	};
 }
@@ -50,13 +55,21 @@ describe("buildDigest", () => {
 		expect(buildDigest(data, now)).toContain("Food");
 		// With budgets off and nothing else to report, the whole digest is empty.
 		const off = buildDigest(
-			{ ...data, prefs: { renewals: true, budgets: false, tasks: true } },
+			{
+				...data,
+				prefs: {
+					renewals: true,
+					budgets: false,
+					tasks: true,
+					budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
+				},
+			},
 			now,
 		);
 		expect(off).toBeNull();
 	});
 
-	it("ignores a budget below the 80% near-threshold", () => {
+	it("ignores a budget below the configured threshold (default 80%)", () => {
 		const msg = buildDigest(
 			base({
 				budgets: [
@@ -69,6 +82,23 @@ describe("buildDigest", () => {
 			now,
 		);
 		expect(msg).toBeNull();
+	});
+
+	it("surfaces a budget once it crosses a lower custom threshold", () => {
+		const data = base({
+			budgets: [{ name: "Food", amount: 100, currency: "USD", tags: ["food"] }],
+			expenses: [
+				{ amount: 60, currency: "USD", date: "2026-06-10", tags: ["food"] },
+			],
+		});
+		// 60% spent: below the default 0.8, but surfaced at a 0.5 threshold.
+		expect(buildDigest(data, now)).toBeNull();
+		const lowered = buildDigest(
+			{ ...data, prefs: { ...data.prefs, budgetThreshold: 0.5 } },
+			now,
+		);
+		expect(lowered).toContain("Food");
+		expect(lowered).toContain("60%");
 	});
 
 	it("lists overdue and due-today tasks only, skipping done/future", () => {

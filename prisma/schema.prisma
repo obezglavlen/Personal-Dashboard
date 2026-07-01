@@ -30,6 +30,8 @@ model User {
   budgets      Budget[]
   financialAccounts FinancialAccount[]
   goals             Goal[]
+  netWorthSnapshots NetWorthSnapshot[]
+  recurringTransactions RecurringTransaction[]
 }
 
 model Account {
@@ -125,6 +127,14 @@ model UserSettings {
   notifyRenewals  Boolean @default(true)
   notifyBudgets   Boolean @default(true)
   notifyTasks     Boolean @default(true)
+  // Monthly AI spending-insight message (separate from the daily digest).
+  notifyInsights  Boolean @default(true)
+  // Last time a monthly insight was sent — makes the monthly job idempotent so a
+  // timed-out/re-run invocation never double-sends or drops users.
+  lastInsightAt   DateTime?
+  // Percent-of-cap at which a budget is surfaced in the digest (e.g. 80 = warn
+  // from 80% spent).
+  budgetAlertThreshold Int @default(80)
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -243,4 +253,61 @@ model Goal {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// A recurring income or expense. Generalizes subscription auto-posting: when
+// `autoPost` is on, each due charge is posted (expense → Expense, income →
+// TaxRecord of type "income"). `lastPostedAt` keeps posting idempotent;
+// `endDate` optionally stops the recurrence.
+model RecurringTransaction {
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  amount       Decimal   @db.Decimal(10, 2)
+  type         String    // "income" | "expense"
+  period       String    // "monthly" | "annual"
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  currency     String    @default("USD")
+  category     String?
+  tags         String[]
+  autoPost     Boolean   @default(false)
+  lastPostedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}
+
+// A daily snapshot of a user's net worth, stored as balances grouped by
+// currency (`byCurrency` = { USD: 1200.50, EUR: -300 }). Display conversion —
+// and point-in-time FX via ExchangeRateSnapshot — happens at read time.
+model NetWorthSnapshot {
+  id         String   @id @default(cuid())
+  userId     String
+  date       DateTime @db.Date
+  byCurrency Json
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+// A daily snapshot of exchange rates so historical figures convert at the rate
+// that was true then, not today's live rate. Global (not per-user). `rates` is
+// the frankfurter shape: rates[X] = units of X per 1 `base`. One row per
+// (base, day); `date` is the UTC day the rates are for.
+model ExchangeRateSnapshot {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  base      String
+  rates     Json
+  source    String   @default("frankfurter")
+  createdAt DateTime @default(now())
+
+  @@unique([base, date])
+  @@index([date])
 }

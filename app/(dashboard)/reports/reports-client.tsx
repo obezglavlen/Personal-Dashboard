@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
 	Cell,
 	Legend,
@@ -9,6 +9,7 @@ import {
 	ResponsiveContainer,
 	Tooltip,
 } from "recharts";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -16,11 +17,18 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { convertToBase, formatMoney } from "@/lib/format";
 import { useCurrency } from "@/lib/hooks/use-currency";
-import { useRates } from "@/lib/hooks/use-rates";
+import { useHistoricalRates } from "@/lib/hooks/use-historical-rates";
 import { useResource } from "@/lib/hooks/use-resource";
-import { currentMonthRange } from "@/lib/budget";
+import {
+	customRange,
+	isInRange,
+	presetRange,
+	RANGE_PRESETS,
+	type RangeKey,
+} from "@/lib/reports/range";
 import { IncomeExpenseChart } from "../income-expense-chart";
 import type { Subscription } from "../subscriptions/subscription-client";
 
@@ -67,53 +75,87 @@ export function ReportsClient() {
 	const { items: expenses } = useResource<Expense>("/api/expenses");
 	const { items: subs } = useResource<Subscription>("/api/subscriptions");
 	const { currency } = useCurrency();
-	const { rates } = useRates(currency);
+	const { ratesForDate } = useHistoricalRates(currency);
 
-	const toBase = useMemo(
-		() => (amount: number, from: string) =>
-			convertToBase(amount, from, currency, rates),
-		[currency, rates],
+	const [rangeKey, setRangeKey] = useState<RangeKey | "custom">("this-month");
+	const [customFrom, setCustomFrom] = useState("");
+	const [customTo, setCustomTo] = useState("");
+
+	// Resolve the active range; a custom range falls back to this-month until
+	// both dates are valid.
+	const range = useMemo(() => {
+		if (rangeKey === "custom") {
+			// Incomplete/inverted custom dates → an empty range (start === end
+			// matches nothing) so the shown figures agree with the "Custom (pick
+			// dates)" label rather than silently displaying this-month totals.
+			return (
+				customRange(customFrom, customTo) ?? {
+					start: new Date(0),
+					end: new Date(0),
+				}
+			);
+		}
+		return presetRange(rangeKey);
+	}, [rangeKey, customFrom, customTo]);
+
+	const rangeLabel =
+		rangeKey === "custom"
+			? customRange(customFrom, customTo)
+				? `${customFrom} → ${customTo}`
+				: "Custom (pick dates)"
+			: (RANGE_PRESETS.find((p) => p.key === rangeKey)?.label ?? "");
+
+	// Convert an amount to the display currency at the rate for its own date, so
+	// historical rows use then-current rates rather than today's.
+	const toBase = useCallback(
+		(amount: number, from: string, isoDate: string) =>
+			convertToBase(amount, from, currency, ratesForDate(isoDate)),
+		[currency, ratesForDate],
 	);
 
-	// This-month income / expense / net, in the global currency.
+	// Income / expense / net over the selected range, in the global currency.
 	const summary = useMemo(() => {
-		const { start, end } = currentMonthRange();
-		const inRange = (iso: string) => {
-			const d = new Date(iso);
-			return d >= start && d < end;
-		};
 		let income = 0;
 		let expense = 0;
 		for (const r of records) {
-			if (r.amount == null || !inRange(r.date)) continue;
-			if (r.type === "income") income += toBase(r.amount, r.currency ?? currency);
+			if (r.amount == null || !isInRange(r.date, range)) continue;
+			if (r.type === "income")
+				income += toBase(r.amount, r.currency ?? currency, r.date);
 			if (r.type === "expense")
-				expense += toBase(r.amount, r.currency ?? currency);
+				expense += toBase(r.amount, r.currency ?? currency, r.date);
 		}
 		for (const e of expenses) {
-			if (inRange(e.date)) expense += toBase(e.amount, e.currency);
+			if (isInRange(e.date, range)) {
+				expense += toBase(e.amount, e.currency, e.date);
+			}
 		}
 		return { income, expense, net: income - expense };
-	}, [records, expenses, toBase, currency]);
+	}, [records, expenses, toBase, currency, range]);
 
-	// Expense total grouped by first tag (the expense's primary category).
+	// Expense total over the range, grouped by first tag (primary category).
 	const byCategory = useMemo(() => {
 		const map = new Map<string, number>();
 		for (const e of expenses) {
+			if (!isInRange(e.date, range)) continue;
 			const cat = e.tags[0] ?? "Untagged";
-			map.set(cat, (map.get(cat) ?? 0) + toBase(e.amount, e.currency));
+			map.set(cat, (map.get(cat) ?? 0) + toBase(e.amount, e.currency, e.date));
 		}
 		return [...map.entries()]
 			.map(([name, value]) => ({ name, value }))
 			.sort((a, b) => b.value - a.value);
-	}, [expenses, toBase]);
+	}, [expenses, toBase, range]);
 
 	// Subscription monthly cost grouped by category.
 	const subsByCategory = useMemo(() => {
 		const map = new Map<string, number>();
+		// Subscriptions are an ongoing monthly cost — value them at today's rate.
+		const todayIso = new Date().toISOString();
 		for (const s of subs) {
 			const cat = s.category?.trim() || "Uncategorized";
-			map.set(cat, (map.get(cat) ?? 0) + toBase(perMonth(s), s.currency));
+			map.set(
+				cat,
+				(map.get(cat) ?? 0) + toBase(perMonth(s), s.currency, todayIso),
+			);
 		}
 		return [...map.entries()]
 			.map(([name, value]) => ({ name, value }))
@@ -127,15 +169,55 @@ export function ReportsClient() {
 					Reports
 				</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Spending and income analytics. Amounts in {currency}.
+					Spending and income analytics · {rangeLabel}. Amounts in {currency}.
 				</p>
 			</div>
 
+			{/* Range selector */}
+			<div className="flex flex-wrap items-center gap-2">
+				{RANGE_PRESETS.map((p) => (
+					<Button
+						key={p.key}
+						variant={rangeKey === p.key ? "default" : "outline"}
+						size="sm"
+						onClick={() => setRangeKey(p.key)}
+					>
+						{p.label}
+					</Button>
+				))}
+				<Button
+					variant={rangeKey === "custom" ? "default" : "outline"}
+					size="sm"
+					onClick={() => setRangeKey("custom")}
+				>
+					Custom
+				</Button>
+				{rangeKey === "custom" && (
+					<div className="flex items-center gap-2">
+						<Input
+							type="date"
+							value={customFrom}
+							onChange={(e) => setCustomFrom(e.target.value)}
+							className="w-auto"
+							aria-label="From date"
+						/>
+						<span className="text-sm text-muted-foreground">→</span>
+						<Input
+							type="date"
+							value={customTo}
+							onChange={(e) => setCustomTo(e.target.value)}
+							className="w-auto"
+							aria-label="To date"
+						/>
+					</div>
+				)}
+			</div>
+
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-				<SummaryCard label="Income this month" value={summary.income} currency={currency} />
-				<SummaryCard label="Expense this month" value={summary.expense} currency={currency} />
+				<SummaryCard label="Income" value={summary.income} currency={currency} />
+				<SummaryCard label="Expense" value={summary.expense} currency={currency} />
 				<SummaryCard
-					label="Net this month"
+					label="Net"
 					value={summary.net}
 					currency={currency}
 					tone={summary.net >= 0 ? "positive" : "negative"}
@@ -147,7 +229,7 @@ export function ReportsClient() {
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
 				<CategoryPie
 					title="Expenses by category"
-					description="All expenses, grouped by primary tag"
+					description={`Grouped by primary tag · ${rangeLabel}`}
 					data={byCategory}
 					currency={currency}
 				/>

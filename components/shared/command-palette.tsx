@@ -4,12 +4,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/api-client";
+import { matchAndRank } from "@/lib/search/match";
 import { navItems } from "./sidebar";
 
 type Bookmark = { id: string; title: string; url: string };
 type Note = { id: string; title: string; tags: string[] };
 type Task = { id: string; title: string; status: string };
 type Expense = { id: string; name: string; tags: string[] };
+type Subscription = { id: string; name: string; category: string | null };
+type Budget = { id: string; name: string; tags: string[] };
+type Goal = { id: string; name: string };
+type Account = { id: string; name: string; type: string };
+type TaxRecord = {
+	id: string;
+	type: string;
+	description: string | null;
+	taxConfigName: string | null;
+};
+type Recurring = {
+	id: string;
+	name: string;
+	type: string;
+	category: string | null;
+	tags: string[];
+};
 
 interface Result {
 	key: string;
@@ -46,6 +64,27 @@ export function CommandPalette({
 		open ? "/api/expenses" : null,
 		fetcher,
 	);
+	const { data: subscriptions } = useSWR<Subscription[]>(
+		open ? "/api/subscriptions" : null,
+		fetcher,
+	);
+	const { data: budgets } = useSWR<Budget[]>(
+		open ? "/api/budgets" : null,
+		fetcher,
+	);
+	const { data: goals } = useSWR<Goal[]>(open ? "/api/goals" : null, fetcher);
+	const { data: accounts } = useSWR<Account[]>(
+		open ? "/api/accounts" : null,
+		fetcher,
+	);
+	const { data: taxRecords } = useSWR<TaxRecord[]>(
+		open ? "/api/tax-records" : null,
+		fetcher,
+	);
+	const { data: recurring } = useSWR<Recurring[]>(
+		open ? "/api/recurring" : null,
+		fetcher,
+	);
 
 	function close() {
 		onOpenChange(false);
@@ -71,9 +110,14 @@ export function CommandPalette({
 		}
 
 		// Content groups only appear once the user types, to keep the empty
-		// palette a clean navigation menu.
+		// palette a clean navigation menu. `goTo` routes to a page then closes.
 		if (q) {
-			for (const b of (bookmarks ?? []).filter((b) => match(b.title) || match(b.url)).slice(0, PER_GROUP)) {
+			const goTo = (href: string) => () => {
+				router.push(href);
+				close();
+			};
+
+			for (const b of matchAndRank(query, bookmarks ?? [], (x) => `${x.title} ${x.url}`, PER_GROUP)) {
 				out.push({
 					key: `bm:${b.id}`,
 					group: "Bookmarks",
@@ -85,47 +129,50 @@ export function CommandPalette({
 					},
 				});
 			}
-			for (const n of (notes ?? []).filter((n) => match(n.title) || n.tags.some(match)).slice(0, PER_GROUP)) {
-				out.push({
-					key: `note:${n.id}`,
-					group: "Notes",
-					label: n.title,
-					sub: n.tags.join(", ") || undefined,
-					onSelect: () => {
-						router.push("/notes");
-						close();
-					},
-				});
+			for (const n of matchAndRank(query, notes ?? [], (x) => `${x.title} ${x.tags.join(" ")}`, PER_GROUP)) {
+				out.push({ key: `note:${n.id}`, group: "Notes", label: n.title, sub: n.tags.join(", ") || undefined, onSelect: goTo("/notes") });
 			}
-			for (const t of (tasks ?? []).filter((t) => match(t.title)).slice(0, PER_GROUP)) {
-				out.push({
-					key: `task:${t.id}`,
-					group: "Tasks",
-					label: t.title,
-					sub: t.status.replace("_", " "),
-					onSelect: () => {
-						router.push("/tasks");
-						close();
-					},
-				});
+			for (const t of matchAndRank(query, tasks ?? [], (x) => x.title, PER_GROUP)) {
+				out.push({ key: `task:${t.id}`, group: "Tasks", label: t.title, sub: t.status.replace("_", " "), onSelect: goTo("/tasks") });
 			}
-			for (const e of (expenses ?? []).filter((e) => match(e.name) || e.tags.some(match)).slice(0, PER_GROUP)) {
-				out.push({
-					key: `exp:${e.id}`,
-					group: "Expenses",
-					label: e.name,
-					sub: e.tags.join(", ") || undefined,
-					onSelect: () => {
-						router.push("/expenses");
-						close();
-					},
-				});
+			for (const e of matchAndRank(query, expenses ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
+				out.push({ key: `exp:${e.id}`, group: "Expenses", label: e.name, sub: e.tags.join(", ") || undefined, onSelect: goTo("/expenses") });
+			}
+			for (const s of matchAndRank(query, subscriptions ?? [], (x) => `${x.name} ${x.category ?? ""}`, PER_GROUP)) {
+				out.push({ key: `sub:${s.id}`, group: "Subscriptions", label: s.name, sub: s.category ?? undefined, onSelect: goTo("/subscriptions") });
+			}
+			for (const b of matchAndRank(query, budgets ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
+				out.push({ key: `bud:${b.id}`, group: "Budgets", label: b.name, sub: b.tags.join(", ") || undefined, onSelect: goTo("/budgets") });
+			}
+			for (const g of matchAndRank(query, goals ?? [], (x) => x.name, PER_GROUP)) {
+				out.push({ key: `goal:${g.id}`, group: "Goals", label: g.name, onSelect: goTo("/net-worth") });
+			}
+			for (const a of matchAndRank(query, accounts ?? [], (x) => `${x.name} ${x.type}`, PER_GROUP)) {
+				out.push({ key: `acct:${a.id}`, group: "Accounts", label: a.name, sub: a.type, onSelect: goTo("/net-worth") });
+			}
+			for (const r of matchAndRank(query, taxRecords ?? [], (x) => `${x.description ?? ""} ${x.type} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
+				out.push({ key: `tax:${r.id}`, group: "Tax records", label: r.description || r.type.replace("_", " "), sub: r.taxConfigName ?? r.type.replace("_", " "), onSelect: goTo("/taxes") });
+			}
+			for (const r of matchAndRank(query, recurring ?? [], (x) => `${x.name} ${x.category ?? ""} ${x.tags.join(" ")}`, PER_GROUP)) {
+				out.push({ key: `rec:${r.id}`, group: "Recurring", label: r.name, sub: `${r.type}${r.category ? ` · ${r.category}` : ""}`, onSelect: goTo("/recurring") });
 			}
 		}
 
 		return out;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [query, bookmarks, notes, tasks, expenses]);
+	}, [
+		query,
+		bookmarks,
+		notes,
+		tasks,
+		expenses,
+		subscriptions,
+		budgets,
+		goals,
+		accounts,
+		taxRecords,
+		recurring,
+	]);
 
 	// Reset state and focus when opened.
 	useEffect(() => {

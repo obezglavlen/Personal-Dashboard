@@ -37,6 +37,8 @@ export interface DigestPrefs {
 	renewals: boolean;
 	budgets: boolean;
 	tasks: boolean;
+	/** Fraction of cap (0–1) at/above which a budget is surfaced. */
+	budgetThreshold: number;
 }
 
 export interface DigestData {
@@ -52,8 +54,8 @@ export interface DigestData {
 
 /** Renewals within this many days are surfaced. */
 const RENEWAL_WINDOW_DAYS = 3;
-/** Budgets at or above this fraction of their cap are surfaced. */
-const BUDGET_NEAR_THRESHOLD = 0.8;
+/** Default budget alert threshold (fraction of cap) when none is configured. */
+export const DEFAULT_BUDGET_THRESHOLD = 0.8;
 
 function dueLabel(days: number): string {
 	if (days <= 0) return "today";
@@ -99,7 +101,7 @@ export function buildDigest(data: DigestData, now: Date): string | null {
 				now,
 			);
 			const pct = spent / cap;
-			if (pct < BUDGET_NEAR_THRESHOLD) continue;
+			if (pct < data.prefs.budgetThreshold) continue;
 			const icon = pct > 1 ? "⚠️" : "🟡";
 			lines.push(
 				`${icon} ${escapeHtml(b.name)}: ${formatMoney(spent, data.displayCurrency)} / ${formatMoney(cap, data.displayCurrency)} (${Math.round(pct * 100)}%)`,

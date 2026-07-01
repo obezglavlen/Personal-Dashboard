@@ -19,6 +19,8 @@ const settingsSchema = z.object({
 	notifyRenewals: z.boolean().optional(),
 	notifyBudgets: z.boolean().optional(),
 	notifyTasks: z.boolean().optional(),
+	notifyInsights: z.boolean().optional(),
+	budgetAlertThreshold: z.number().int().min(1).max(100).optional(),
 	currentPassword: z.string().optional(),
 	newPassword: z.string().min(8).optional(),
 });
@@ -41,6 +43,8 @@ export async function GET() {
 		notifyRenewals: user?.settings?.notifyRenewals ?? true,
 		notifyBudgets: user?.settings?.notifyBudgets ?? true,
 		notifyTasks: user?.settings?.notifyTasks ?? true,
+		notifyInsights: user?.settings?.notifyInsights ?? true,
+		budgetAlertThreshold: user?.settings?.budgetAlertThreshold ?? 80,
 	});
 }
 
@@ -66,6 +70,8 @@ export async function PUT(req: Request) {
 		notifyRenewals,
 		notifyBudgets,
 		notifyTasks,
+		notifyInsights,
+		budgetAlertThreshold,
 		currentPassword,
 		newPassword,
 	} = parsed.data;
@@ -100,6 +106,9 @@ export async function PUT(req: Request) {
 	if (notifyRenewals !== undefined) notif.notifyRenewals = notifyRenewals;
 	if (notifyBudgets !== undefined) notif.notifyBudgets = notifyBudgets;
 	if (notifyTasks !== undefined) notif.notifyTasks = notifyTasks;
+	if (notifyInsights !== undefined) notif.notifyInsights = notifyInsights;
+	if (budgetAlertThreshold !== undefined)
+		notif.budgetAlertThreshold = budgetAlertThreshold;
 	if (Object.keys(notif).length > 0) {
 		await prisma.userSettings.upsert({
 			where: { userId: session.user.id },

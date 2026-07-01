@@ -3,6 +3,24 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { currentMonthRange } from "@/lib/budget";
 import { daysUntil, nextRenewal, type Period } from "@/lib/subscriptions";
+import {
+	buildAccountData,
+	buildBookmarkData,
+	buildBudgetData,
+	buildExpenseData,
+	buildGoalData,
+	buildNoteData,
+	buildSubscriptionData,
+	buildTaskData,
+} from "@/lib/api/build-data";
+import { accountSchema } from "@/lib/validations/account";
+import { bookmarkSchema } from "@/lib/validations/bookmark";
+import { budgetSchema } from "@/lib/validations/budget";
+import { expenseSchema } from "@/lib/validations/expense";
+import { goalSchema } from "@/lib/validations/goal";
+import { noteSchema } from "@/lib/validations/note";
+import { subscriptionSchema } from "@/lib/validations/subscription";
+import { taskSchema } from "@/lib/validations/task";
 
 /**
  * Read-only tools the chat agent uses to answer questions about the signed-in
@@ -401,6 +419,166 @@ export function buildTools(userId: string) {
 				} catch {
 					return { base: code, rates: {} };
 				}
+			},
+		}),
+
+		// --- Write tools -----------------------------------------------------
+		// Every create* tool carries `needsApproval: true`: the model proposes
+		// the write, but the SDK pauses and surfaces an approval request to the
+		// UI. `execute` (the actual DB write) only runs after the user approves
+		// and the message is resubmitted. `userId` is injected by the build*Data
+		// helpers from the closure — never accepted from the model — so writes
+		// stay hard-scoped to the signed-in user, exactly like the read tools.
+		createExpense: tool({
+			description:
+				"Create a new expense. Amounts are in the given 3-letter currency (defaults to the user's). `date` is an ISO date (defaults to today). `tags` are free-form; the first is treated as the category. Needs user approval before it is saved.",
+			inputSchema: expenseSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.expense.create({
+					data: buildExpenseData(input, userId),
+				});
+				return {
+					id: row.id,
+					name: row.name,
+					amount: Number(row.amount),
+					currency: row.currency,
+					date: row.date.toISOString().slice(0, 10),
+					tags: row.tags,
+				};
+			},
+		}),
+
+		createTask: tool({
+			description:
+				"Create a new task. `status` is todo|in_progress|done, `priority` is low|medium|high, `dueDate` is an optional ISO date. Needs user approval before it is saved.",
+			inputSchema: taskSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.task.create({
+					data: buildTaskData(input, userId),
+				});
+				return {
+					id: row.id,
+					title: row.title,
+					status: row.status,
+					priority: row.priority,
+					dueDate: row.dueDate ? row.dueDate.toISOString().slice(0, 10) : null,
+				};
+			},
+		}),
+
+		createNote: tool({
+			description:
+				"Create a new note with a title, markdown content, optional tags, and pin flag. Needs user approval before it is saved.",
+			inputSchema: noteSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.note.create({
+					data: buildNoteData(input, userId),
+				});
+				return {
+					id: row.id,
+					title: row.title,
+					tags: row.tags,
+					pinned: row.pinned,
+				};
+			},
+		}),
+
+		createBookmark: tool({
+			description:
+				"Create a new bookmark from a URL and title, with an optional description and category. Needs user approval before it is saved.",
+			inputSchema: bookmarkSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.bookmark.create({
+					data: buildBookmarkData(input, userId),
+				});
+				return {
+					id: row.id,
+					title: row.title,
+					url: row.url,
+					category: row.category,
+				};
+			},
+		}),
+
+		createBudget: tool({
+			description:
+				"Create a monthly budget: a spending cap (`amount`) matched against expenses carrying any of `tags` (empty = all expenses). Needs user approval before it is saved.",
+			inputSchema: budgetSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.budget.create({
+					data: buildBudgetData(input, userId),
+				});
+				return {
+					id: row.id,
+					name: row.name,
+					amount: Number(row.amount),
+					currency: row.currency,
+					period: row.period,
+					tags: row.tags,
+				};
+			},
+		}),
+
+		createSubscription: tool({
+			description:
+				"Create a recurring subscription. `period` is monthly|annual, `startDate` is an optional ISO date, `autoExpense` auto-posts an expense on each renewal. Needs user approval before it is saved.",
+			inputSchema: subscriptionSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.subscription.create({
+					data: buildSubscriptionData(input, userId),
+				});
+				return {
+					id: row.id,
+					name: row.name,
+					price: Number(row.price),
+					currency: row.currency,
+					period: row.period,
+					startDate: row.startDate.toISOString().slice(0, 10),
+				};
+			},
+		}),
+
+		createGoal: tool({
+			description:
+				"Create a savings goal with a positive `target` and optional starting `current` amount. Needs user approval before it is saved.",
+			inputSchema: goalSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.goal.create({
+					data: buildGoalData(input, userId),
+				});
+				return {
+					id: row.id,
+					name: row.name,
+					target: Number(row.target),
+					current: Number(row.current),
+					currency: row.currency,
+				};
+			},
+		}),
+
+		createFinancialAccount: tool({
+			description:
+				"Create a financial account for net worth. `type` is one of cash|checking|savings|investment|crypto|property|loan|credit|other. `balance` may be negative for liabilities. Needs user approval before it is saved.",
+			inputSchema: accountSchema,
+			needsApproval: true,
+			execute: async (input) => {
+				const row = await prisma.financialAccount.create({
+					data: buildAccountData(input, userId),
+				});
+				return {
+					id: row.id,
+					name: row.name,
+					type: row.type,
+					balance: Number(row.balance),
+					currency: row.currency,
+				};
 			},
 		}),
 	};

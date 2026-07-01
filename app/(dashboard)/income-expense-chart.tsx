@@ -22,7 +22,7 @@ import {
 import { TagInput } from "@/components/ui/tag-input";
 import { convertToBase, formatMoney } from "@/lib/format";
 import { useCurrency } from "@/lib/hooks/use-currency";
-import { useRates } from "@/lib/hooks/use-rates";
+import { useHistoricalRates } from "@/lib/hooks/use-historical-rates";
 import { useResource } from "@/lib/hooks/use-resource";
 
 type TaxRecord = {
@@ -74,7 +74,7 @@ export function IncomeExpenseChart() {
 	const { items: records } = useResource<TaxRecord>("/api/tax-records");
 	const { items: expenses } = useResource<Expense>("/api/expenses");
 	const { currency } = useCurrency();
-	const { rates } = useRates(currency);
+	const { ratesForDate } = useHistoricalRates(currency);
 	// Default to 1Y (index into PERIODS).
 	const [periodIdx, setPeriodIdx] = useState(4);
 	const period = PERIODS[periodIdx];
@@ -147,7 +147,7 @@ export function IncomeExpenseChart() {
 				r.amount,
 				r.currency ?? currency,
 				currency,
-				rates,
+				ratesForDate(r.date),
 			);
 		}
 
@@ -165,12 +165,12 @@ export function IncomeExpenseChart() {
 				e.amount,
 				e.currency,
 				currency,
-				rates,
+				ratesForDate(e.date),
 			);
 		}
 
 		return buckets;
-	}, [records, expenses, period, tagFilter, currency, rates]);
+	}, [records, expenses, period, tagFilter, currency, ratesForDate]);
 
 	return (
 		<Card>
