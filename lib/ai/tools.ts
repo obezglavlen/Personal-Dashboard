@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { currentMonthRange } from "@/lib/budget";
+import { syncTags } from "@/lib/api/tags";
 import { daysUntil, nextRenewal, type Period } from "@/lib/subscriptions";
 import {
 	buildAccountData,
@@ -170,7 +171,7 @@ export function buildTools(userId: string) {
 						period: true,
 						startDate: true,
 						currency: true,
-						category: true,
+						tags: true,
 					},
 				});
 				const ref = new Date();
@@ -186,7 +187,7 @@ export function buildTools(userId: string) {
 						price,
 						currency: s.currency,
 						period: s.period,
-						category: s.category,
+						tags: s.tags,
 						nextRenewal: next.toISOString().slice(0, 10),
 						daysUntilRenewal: daysUntil(next, ref),
 						monthlyCost: s.period === "annual" ? price / 12 : price,
@@ -438,6 +439,7 @@ export function buildTools(userId: string) {
 				const row = await prisma.expense.create({
 					data: buildExpenseData(input, userId),
 				});
+				await syncTags(userId, row.tags);
 				return {
 					id: row.id,
 					name: row.name,
@@ -477,6 +479,7 @@ export function buildTools(userId: string) {
 				const row = await prisma.note.create({
 					data: buildNoteData(input, userId),
 				});
+				await syncTags(userId, row.tags);
 				return {
 					id: row.id,
 					title: row.title,
@@ -513,6 +516,7 @@ export function buildTools(userId: string) {
 				const row = await prisma.budget.create({
 					data: buildBudgetData(input, userId),
 				});
+				await syncTags(userId, row.tags);
 				return {
 					id: row.id,
 					name: row.name,
@@ -533,6 +537,7 @@ export function buildTools(userId: string) {
 				const row = await prisma.subscription.create({
 					data: buildSubscriptionData(input, userId),
 				});
+				await syncTags(userId, row.tags);
 				return {
 					id: row.id,
 					name: row.name,

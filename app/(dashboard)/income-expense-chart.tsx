@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { TagInput } from "@/components/ui/tag-input";
 import { convertToBase, formatMoney } from "@/lib/format";
+import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useHistoricalRates } from "@/lib/hooks/use-historical-rates";
 import { useResource } from "@/lib/hooks/use-resource";
@@ -83,19 +84,14 @@ export function IncomeExpenseChart() {
 	// Distinct tags across expenses, for the search-bar autocomplete. Tax
 	// records of type "expense" have no tags of their own, so they carry an
 	// implicit TAX_TAG ("taxes") that participates in filtering like any other.
+	const catalog = useAllTags();
 	const allTags = useMemo(() => {
-		const set = new Map<string, string>();
-		for (const e of expenses ?? []) {
-			for (const t of e.tags) {
-				const k = t.toLowerCase();
-				if (!set.has(k)) set.set(k, t);
-			}
-		}
+		const set = new Set(catalog);
 		if ((records ?? []).some((r) => r.type === "expense" && r.amount != null)) {
-			set.set(TAX_TAG, TAX_TAG);
+			set.add(TAX_TAG);
 		}
-		return [...set.values()].sort((a, b) => a.localeCompare(b));
-	}, [expenses, records]);
+		return [...set].sort((a, b) => a.localeCompare(b));
+	}, [catalog, records]);
 
 	const data = useMemo(() => {
 		// Build contiguous buckets ending at the current day/month so empty

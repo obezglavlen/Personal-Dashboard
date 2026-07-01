@@ -151,7 +151,7 @@ export function ReportsClient() {
 		// Subscriptions are an ongoing monthly cost — value them at today's rate.
 		const todayIso = new Date().toISOString();
 		for (const s of subs) {
-			const cat = s.category?.trim() || "Uncategorized";
+			const cat = s.tags[0]?.trim() || "Uncategorized";
 			map.set(
 				cat,
 				(map.get(cat) ?? 0) + toBase(perMonth(s), s.currency, todayIso),

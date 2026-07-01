@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
 import { parseBody } from "./json";
 import { requireUserId } from "./session";
+import { syncTags } from "./tags";
 
 /**
  * Structural view of a Prisma model delegate. The argument/return types are
@@ -40,6 +41,11 @@ export interface CrudOptions<TCreate, TUpdate> {
   toCreateData?: (input: TCreate, userId: string) => Record<string, unknown>;
   /** Build the `data` for an update. Defaults to `{ ...input }`. */
   toUpdateData?: (input: TUpdate) => Record<string, unknown>;
+  /**
+   * If set, pull the tag list out of a create/update input so it can be synced
+   * into the per-user Tag catalog (shared autocomplete across all modals).
+   */
+  tagsOf?: (input: TCreate | TUpdate) => (string | null | undefined)[] | undefined;
 }
 
 /**
@@ -68,6 +74,7 @@ export function crudHandlers<TCreate, TUpdate>(opts: CrudOptions<TCreate, TUpdat
       ? opts.toCreateData(input, userId)
       : { ...input, userId };
     const row = await opts.delegate.create({ data, ...withInclude });
+    if (opts.tagsOf) await syncTags(userId, opts.tagsOf(input));
     return NextResponse.json(serialize(row), { status: 201 });
   }
 
@@ -81,6 +88,7 @@ export function crudHandlers<TCreate, TUpdate>(opts: CrudOptions<TCreate, TUpdat
       data,
       ...withInclude,
     });
+    if (opts.tagsOf) await syncTags(userId, opts.tagsOf(input));
     return NextResponse.json(serialize(row));
   }
 

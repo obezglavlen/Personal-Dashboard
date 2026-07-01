@@ -60,9 +60,10 @@ export function buildBudgetData(input: BudgetInput, userId: string) {
 }
 
 export function buildSubscriptionData(input: SubscriptionInput, userId: string) {
-	const { startDate, ...rest } = input;
+	const { startDate, tags, ...rest } = input;
 	return {
 		...rest,
+		tags: tags ?? [],
 		startDate: startDate ? new Date(startDate) : new Date(),
 		userId,
 	};

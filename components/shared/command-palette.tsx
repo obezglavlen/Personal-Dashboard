@@ -11,7 +11,7 @@ type Bookmark = { id: string; title: string; url: string };
 type Note = { id: string; title: string; tags: string[] };
 type Task = { id: string; title: string; status: string };
 type Expense = { id: string; name: string; tags: string[] };
-type Subscription = { id: string; name: string; category: string | null };
+type Subscription = { id: string; name: string; tags: string[] };
 type Budget = { id: string; name: string; tags: string[] };
 type Goal = { id: string; name: string };
 type Account = { id: string; name: string; type: string };
@@ -25,7 +25,6 @@ type Recurring = {
 	id: string;
 	name: string;
 	type: string;
-	category: string | null;
 	tags: string[];
 };
 
@@ -138,8 +137,8 @@ export function CommandPalette({
 			for (const e of matchAndRank(query, expenses ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
 				out.push({ key: `exp:${e.id}`, group: "Expenses", label: e.name, sub: e.tags.join(", ") || undefined, onSelect: goTo("/expenses") });
 			}
-			for (const s of matchAndRank(query, subscriptions ?? [], (x) => `${x.name} ${x.category ?? ""}`, PER_GROUP)) {
-				out.push({ key: `sub:${s.id}`, group: "Subscriptions", label: s.name, sub: s.category ?? undefined, onSelect: goTo("/subscriptions") });
+			for (const s of matchAndRank(query, subscriptions ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
+				out.push({ key: `sub:${s.id}`, group: "Subscriptions", label: s.name, sub: s.tags.join(", ") || undefined, onSelect: goTo("/subscriptions") });
 			}
 			for (const b of matchAndRank(query, budgets ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
 				out.push({ key: `bud:${b.id}`, group: "Budgets", label: b.name, sub: b.tags.join(", ") || undefined, onSelect: goTo("/budgets") });
@@ -153,8 +152,8 @@ export function CommandPalette({
 			for (const r of matchAndRank(query, taxRecords ?? [], (x) => `${x.description ?? ""} ${x.type} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
 				out.push({ key: `tax:${r.id}`, group: "Tax records", label: r.description || r.type.replace("_", " "), sub: r.taxConfigName ?? r.type.replace("_", " "), onSelect: goTo("/taxes") });
 			}
-			for (const r of matchAndRank(query, recurring ?? [], (x) => `${x.name} ${x.category ?? ""} ${x.tags.join(" ")}`, PER_GROUP)) {
-				out.push({ key: `rec:${r.id}`, group: "Recurring", label: r.name, sub: `${r.type}${r.category ? ` · ${r.category}` : ""}`, onSelect: goTo("/recurring") });
+			for (const r of matchAndRank(query, recurring ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
+				out.push({ key: `rec:${r.id}`, group: "Recurring", label: r.name, sub: `${r.type}${r.tags.length ? ` · ${r.tags.join(", ")}` : ""}`, onSelect: goTo("/recurring") });
 			}
 		}
 

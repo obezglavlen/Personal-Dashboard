@@ -26,6 +26,7 @@ import {
 import { TagInput } from "@/components/ui/tag-input";
 import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 import { convertToBase, formatMoney } from "@/lib/format";
+import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
@@ -36,7 +37,7 @@ export type Subscription = {
 	price: number;
 	period: "monthly" | "annual";
 	startDate: string;
-	category: string | null;
+	tags: string[];
 	currency: string;
 	autoExpense: boolean;
 	createdAt: string;
@@ -47,7 +48,7 @@ type Form = {
 	price: string;
 	period: "monthly" | "annual";
 	startDate: string;
-	category: string;
+	tags: string[];
 	currency: string;
 	autoExpense: boolean;
 };
@@ -57,7 +58,7 @@ const EMPTY: Form = {
 	price: "",
 	period: "monthly",
 	startDate: new Date().toISOString().slice(0, 10),
-	category: "",
+	tags: [],
 	currency: "USD",
 	autoExpense: false,
 };
@@ -122,15 +123,8 @@ export function SubscriptionClient() {
 
 	const autoCount = (subs ?? []).filter((s) => s.autoExpense).length;
 
-	// Distinct existing categories, for the category autocomplete.
-	const catSuggestions = useMemo(() => {
-		const set = new Map<string, string>();
-		for (const s of subs ?? []) {
-			const c = s.category?.trim();
-			if (c && !set.has(c.toLowerCase())) set.set(c.toLowerCase(), c);
-		}
-		return [...set.values()].sort((a, b) => a.localeCompare(b));
-	}, [subs]);
+	// Shared tag catalog (universal across all money modals).
+	const tagSuggestions = useAllTags();
 
 	function openCreate() {
 		setEditId(null);
@@ -145,7 +139,7 @@ export function SubscriptionClient() {
 			price: String(s.price),
 			period: s.period,
 			startDate: s.startDate.slice(0, 10),
-			category: s.category ?? "",
+			tags: s.tags,
 			currency: s.currency,
 			autoExpense: s.autoExpense,
 		});
@@ -372,19 +366,14 @@ export function SubscriptionClient() {
 								</div>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="sub-cat">Category (optional)</Label>
+								<Label htmlFor="sub-tags">Tags</Label>
 								<TagInput
-										id="sub-cat"
-										value={form.category ? [form.category] : []}
-										onChange={(next) =>
-											setForm({
-												...form,
-												category: next.length ? next[next.length - 1] : "",
-											})
-										}
-										suggestions={catSuggestions}
-										placeholder="e.g. entertainment"
-									/>
+									id="sub-tags"
+									value={form.tags}
+									onChange={(next) => setForm({ ...form, tags: next })}
+									suggestions={tagSuggestions}
+									placeholder="e.g. entertainment"
+								/>
 							</div>
 							<DialogFooter>
 								<Button type="submit">Save</Button>
@@ -556,7 +545,7 @@ function Group({
 									{formatMoney(convert(perMonth(s), view), s.currency)} /{" "}
 									{viewLabel(view)}
 								</span>
-								{s.category ? ` · ${s.category}` : ""}
+								{s.tags.length ? ` · ${s.tags.join(", ")}` : ""}
 							</p>
 							{s.currency !== baseCurrency && (
 								<p className="text-xs text-muted-foreground">

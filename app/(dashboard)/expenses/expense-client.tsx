@@ -19,6 +19,7 @@ import { convertToBase, formatMoney } from "@/lib/format";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
+import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { CreateExpenseDialog, type Expense } from "./create-expense-dialog";
 
 type Mode = { kind: "create" } | { kind: "edit"; record: Expense };
@@ -42,17 +43,8 @@ export function ExpenseClient() {
 	const [page, setPage] = useState(0);
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 
-	// Distinct tags across all expenses, for autocomplete suggestions.
-	const allTags = useMemo(() => {
-		const set = new Map<string, string>();
-		for (const r of records ?? []) {
-			for (const t of r.tags) {
-				const k = t.toLowerCase();
-				if (!set.has(k)) set.set(k, t);
-			}
-		}
-		return [...set.values()].sort((a, b) => a.localeCompare(b));
-	}, [records]);
+	// Shared tag catalog (universal across all money modals).
+	const allTags = useAllTags();
 
 	const filtered = useMemo(() => {
 		if (!records) return [];

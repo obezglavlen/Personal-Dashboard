@@ -11,6 +11,7 @@ import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
 import type { Expense } from "../expenses/create-expense-dialog";
+import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { type Budget, CreateBudgetDialog } from "./create-budget-dialog";
 
 type Mode = { kind: "create" } | { kind: "edit"; record: Budget };
@@ -28,18 +29,8 @@ export function BudgetClient() {
 	const [open, setOpen] = useState(false);
 	const [mode, setMode] = useState<Mode>({ kind: "create" });
 
-	// Tag suggestions drawn from existing expenses so a budget targets tags that
-	// actually appear in spending.
-	const allTags = useMemo(() => {
-		const set = new Map<string, string>();
-		for (const e of expenses) {
-			for (const t of e.tags) {
-				const k = t.toLowerCase();
-				if (!set.has(k)) set.set(k, t);
-			}
-		}
-		return [...set.values()].sort((a, b) => a.localeCompare(b));
-	}, [expenses]);
+	// Shared tag catalog (universal across all money modals).
+	const allTags = useAllTags();
 
 	const rows = useMemo(
 		() =>

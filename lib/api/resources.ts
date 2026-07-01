@@ -44,7 +44,7 @@ export const serializeSubscription = (s: Row) => ({
 	price: num(s.price),
 	period: s.period,
 	startDate: iso(s.startDate),
-	category: s.category,
+	tags: s.tags,
 	currency: s.currency,
 	autoExpense: s.autoExpense,
 	lastPostedAt: s.lastPostedAt ? iso(s.lastPostedAt) : null,
@@ -94,6 +94,7 @@ export const noteHandlers = crudHandlers({
 	createSchema: noteSchema,
 	updateSchema: noteSchema,
 	orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
+	tagsOf: (i) => i.tags,
 });
 
 export const bookmarkHandlers = crudHandlers({
@@ -130,6 +131,7 @@ export const subscriptionHandlers = crudHandlers({
 			startDate: startDate ? new Date(startDate) : new Date(),
 		}),
 	}),
+	tagsOf: (i) => i.tags,
 });
 
 export const taxConfigHandlers = crudHandlers({
@@ -220,6 +222,7 @@ export const budgetHandlers = crudHandlers({
 	orderBy: [{ createdAt: "desc" }],
 	serialize: serializeBudget,
 	toCreateData: buildBudgetData,
+	tagsOf: (i) => i.tags,
 });
 
 export const expenseHandlers = crudHandlers({
@@ -233,6 +236,7 @@ export const expenseHandlers = crudHandlers({
 		...rest,
 		...(date !== undefined && { date: date ? new Date(date) : new Date() }),
 	}),
+	tagsOf: (i) => i.tags,
 });
 
 export const serializeRecurring = (r: Row) => ({
@@ -245,7 +249,6 @@ export const serializeRecurring = (r: Row) => ({
 	startDate: iso(r.startDate),
 	endDate: r.endDate ? iso(r.endDate) : null,
 	currency: r.currency,
-	category: r.category,
 	tags: r.tags,
 	autoPost: r.autoPost,
 	lastPostedAt: r.lastPostedAt ? iso(r.lastPostedAt) : null,
@@ -269,4 +272,5 @@ export const recurringHandlers = crudHandlers({
 			endDate: endDate ? new Date(endDate) : null,
 		}),
 	}),
+	tagsOf: (i) => i.tags,
 });
