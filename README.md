@@ -130,7 +130,16 @@ $env:DATABASE_URL="<prod url>"; $env:ADMIN_PASSWORD="your-strong-password"; pnpm
 
 ### Step 8 — Scheduled jobs (cron)
 
-`vercel.json` defines two daily cron jobs: auto-post subscription renewals at 06:00 and send the Telegram digest at 07:00. They run automatically on Vercel **only if** you set `CRON_SECRET` — Vercel attaches it as the `Authorization: Bearer` header when it calls the cron URLs. Without `CRON_SECRET` those endpoints return `503` and nothing runs. The digest also needs `TELEGRAM_BOT_TOKEN`.
+`vercel.json` defines four cron jobs. They run automatically on Vercel **only if** you set `CRON_SECRET` — Vercel attaches it as the `Authorization: Bearer` header when it calls the cron URLs. Without `CRON_SECRET` these endpoints return `503` and nothing runs.
+
+| Schedule (UTC) | Endpoint | What it does |
+|---|---|---|
+| `0 5 * * *` — daily 05:00 | `/api/cron/capture-rates` | Snapshot the day's exchange rates so historical figures convert at the rate that was true then. |
+| `0 6 * * *` — daily 06:00 | `/api/cron/post-renewals` | Auto-post due subscription renewals **and** recurring transactions, then record a daily net-worth snapshot. |
+| `0 7 * * *` — daily 07:00 | `/api/cron/notify` | Send the daily Telegram digest (upcoming renewals, budgets near/over cap, overdue tasks). Needs `TELEGRAM_BOT_TOKEN`. |
+| `0 9 1 * *` — monthly, 1st 09:00 | `/api/cron/monthly-insight` | Send a monthly spending insight over Telegram — an AI narrative when `OPENROUTER_API_KEY` is set, otherwise a templated summary. |
+
+> **Vercel Hobby limits how many cron jobs a project can run.** If a deploy is rejected for too many crons, either upgrade the plan or fold `capture-rates` into `post-renewals` (both run daily) to reduce the count.
 
 Done. Open your Vercel URL and log in.
 
@@ -146,9 +155,9 @@ Legend: ✅ Required · ⚠️ Required for that feature only · ⬜ Optional
 | `DATABASE_POOL_MAX` | ⬜ | Max connections in the `pg` pool. The small default suits Prisma Postgres's low direct-connection limit and keeps a query burst (e.g. the dashboard) from exhausting the upstream. | Defaults to `3`. | Integer. Raise on a bigger DB — e.g. `10` to match `pg`'s old default, or higher (bounded by your DB's own connection limit). No true "unlimited". |
 | `NEXTAUTH_SECRET` | ✅ | Signs the NextAuth session (JWT) cookies. | NextAuth refuses to run in production; login is broken. | Generate one (see command below). |
 | `NEXTAUTH_URL` | ✅ | Canonical site URL for auth callbacks/redirects. | Login redirects break. | Your deployment URL, e.g. `https://your-app.vercel.app` (no trailing slash). |
-| `CRON_SECRET` | ⚠️ crons | Guards `/api/cron/*`. Vercel Cron sends it as a Bearer token. | Cron endpoints return `503`; daily renewals + digest never run. | Generate one (see command below). |
-| `TELEGRAM_BOT_TOKEN` | ⬜ | Sends the daily Telegram digest + the "Send test" button in Settings. | Those return `503`; rest of app is fine. | Create a bot via [@BotFather](https://t.me/BotFather). Each user links their chat id in Settings → Notifications. |
-| `OPENROUTER_API_KEY` | ⬜ | Powers the AI chat assistant (via OpenRouter). | AI chat returns an error; rest of app is fine. | https://openrouter.ai/keys |
+| `CRON_SECRET` | ⚠️ crons | Guards `/api/cron/*`. Vercel Cron sends it as a Bearer token. | All four cron endpoints return `503`; scheduled jobs never run. | Generate one (see command below). |
+| `TELEGRAM_BOT_TOKEN` | ⬜ | Sends the daily Telegram digest, the monthly spending insight, and the "Send test" button in Settings. | Those return `503`; rest of app is fine. | Create a bot via [@BotFather](https://t.me/BotFather). Each user links their chat id in Settings → Notifications. |
+| `OPENROUTER_API_KEY` | ⬜ | Powers the AI chat assistant and the monthly spending insight's narrative (via OpenRouter). | AI chat errors; the monthly insight falls back to a templated summary; rest of app is fine. | https://openrouter.ai/keys |
 | `CHAT_MODEL` | ⬜ | Model id for the AI chat. **Must support tool/function calling.** | Defaults to `deepseek/deepseek-chat`. | Any tool-calling model id from OpenRouter. |
 | `REASONING_EFFORT` | ⬜ | Chain-of-thought depth for reasoning models. | Defaults to `minimal`. | One of `xhigh\|high\|medium\|low\|minimal\|none`. |
 
