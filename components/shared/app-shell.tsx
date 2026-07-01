@@ -43,7 +43,11 @@ export function AppShell({ headerRight, children }: AppShellProps) {
       />
 
       <div className="flex flex-1 flex-col lg:overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-safe lg:h-16 lg:px-6">
+        {/* min-h (not fixed h): pt-safe adds env(safe-area-inset-top) padding,
+            and with border-box a fixed height would cap the box so the padding
+            can't push content below the iOS status bar / Dynamic Island. A
+            min-height lets the header grow by the inset instead. */}
+        <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-safe lg:min-h-16 lg:px-6">
           <div className="flex items-center gap-2 lg:hidden">
             <Button
               variant="ghost"
