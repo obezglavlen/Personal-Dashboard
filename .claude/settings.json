@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\Users\\user\\Documents\\home\\.claude\\hooks\\test-on-change.ps1\"",
+            "timeout": 120,
+            "statusMessage": "Running Vitest after edit…"
+          }
+        ]
+      }
+    ]
+  }
+}

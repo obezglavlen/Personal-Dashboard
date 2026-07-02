@@ -54,3 +54,6 @@ vercel_*.js
 .vscode/
 .idea/
 Thumbs.db
+
+# graphify generated
+/graphify-out
