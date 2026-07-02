@@ -71,24 +71,24 @@ Easiest path (inside Vercel):
    postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
    ```
 
-   You will paste this as `DATABASE_URL` in Step 4. Keep it private.
+   You will paste this as `DATABASE_URL` in Step 3. Keep it private.
 
 Any other provider works too (Neon, Supabase, Railway, or your own server) — just grab its `postgresql://...` connection string. Cloud databases usually require `?sslmode=require` at the end.
 
 ### Step 2 — Import the project into Vercel
 
-1. You already forked project to your gitlab, so connect your github to Vercel
+1. You already forked project to your github, so connect your github to Vercel
 2. Vercel dashboard → **Add New… → Project**.
 3. Select your GitHub repo → **Import Git Repository**.
 3. The Framework Preset is auto-detected as **Next.js** — leave it.
 4. **Do not change** the Build or Install commands. They are already defined in `vercel.json`: install with `pnpm install`, then the build runs `prisma generate` → `prisma migrate deploy` → `next build`.
-5. **Don't click Deploy yet** — add the environment variables first (Step 4).
+5. **Don't click Deploy yet** — add the environment variables first (Step 3).
 
 ### Step 3 — Set environment variables
 
 On the import screen (or later under **Project → Settings → Environment Variables**), add the variables from the [Environment Variables](#environment-variables) table below. At minimum set the three **Required** ones. Apply them to the **Production** environment (also add **Preview** if you want preview deployments to work).
 
-> For `NEXTAUTH_URL` you don't know the final URL yet. Put a placeholder such as `https://example.vercel.app` for now and fix it in Step 6.
+> For `NEXTAUTH_URL` you don't know the final URL yet. Put a placeholder such as `https://example.vercel.app` for now and fix it in Step 5.
 
 ### Step 4 — Deploy
 
