@@ -82,7 +82,7 @@ function perMonth(r: Recurring): number {
 }
 
 export function RecurringClient() {
-	const { items, isLoading, mutate, remove } =
+	const { items, isLoading, mutate, remove, update } =
 		useResource<Recurring>("/api/recurring");
 	const { currency } = useCurrency();
 	const { rates } = useRates(currency);
@@ -131,6 +131,14 @@ export function RecurringClient() {
 			await remove(id);
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : "Failed to delete");
+		}
+	}
+
+	async function toggleAuto(r: Recurring) {
+		try {
+			await update(r.id, { autoPost: !r.autoPost });
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : "Failed to update");
 		}
 	}
 
@@ -200,12 +208,6 @@ export function RecurringClient() {
 											<ArrowDownCircle className="h-4 w-4 shrink-0 text-destructive" />
 										)}
 										<p className="truncate text-sm font-semibold">{r.name}</p>
-										{r.autoPost && (
-											<Zap
-												className="h-3 w-3 shrink-0 text-amber-500"
-												aria-label="Auto-post on"
-											/>
-										)}
 									</div>
 									<p className="mt-1 text-xs capitalize text-muted-foreground">
 										{r.period}
@@ -220,6 +222,17 @@ export function RecurringClient() {
 									</p>
 								</div>
 								<div className="flex shrink-0 gap-1">
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => toggleAuto(r)}
+										aria-label={r.autoPost ? "Disable auto-post" : "Enable auto-post"}
+										title={r.autoPost ? "Auto-posting due charges" : "Auto-post off"}
+									>
+										<Zap
+											className={`h-3 w-3 ${r.autoPost ? "fill-current text-primary" : "text-muted-foreground"}`}
+										/>
+									</Button>
 									<Button
 										variant="ghost"
 										size="icon"
@@ -464,15 +477,6 @@ function RecurringDialog({
 							placeholder="e.g. housing, salary…"
 						/>
 					</div>
-					<label className="flex items-center gap-2 text-sm">
-						<input
-							type="checkbox"
-							checked={form.autoPost}
-							onChange={(e) => set("autoPost", e.target.checked)}
-							className="h-4 w-4 rounded border-input"
-						/>
-						Auto-post each due charge
-					</label>
 					<DialogFooter>
 						<Button type="submit">{edit ? "Save" : "Add"}</Button>
 					</DialogFooter>
