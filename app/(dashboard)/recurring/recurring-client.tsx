@@ -1,17 +1,10 @@
 "use client";
 
-import {
-	ArrowDownCircle,
-	ArrowUpCircle,
-	Pencil,
-	Plus,
-	RefreshCw,
-	Trash2,
-	Zap,
-} from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Plus, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiPatch, apiPost } from "@/lib/api-client";
+import { CardActions } from "@/components/shared/card-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -221,38 +214,17 @@ export function RecurringClient() {
 										{r.endDate ? ` · ends ${r.endDate.slice(0, 10)}` : ""}
 									</p>
 								</div>
-								<div className="flex shrink-0 gap-1">
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => toggleAuto(r)}
-										aria-label={r.autoPost ? "Disable auto-post" : "Enable auto-post"}
-										title={r.autoPost ? "Auto-posting due charges" : "Auto-post off"}
-									>
-										<Zap
-											className={`h-3 w-3 ${r.autoPost ? "fill-current text-primary" : "text-muted-foreground"}`}
-										/>
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => {
-											setEdit(r);
-											setOpen(true);
-										}}
-										aria-label="Edit"
-									>
-										<Pencil className="h-3 w-3" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => del(r.id)}
-										aria-label="Delete"
-									>
-										<Trash2 className="h-3 w-3" />
-									</Button>
-								</div>
+								<CardActions
+									auto={r.autoPost}
+									onEdit={() => {
+										setEdit(r);
+										setOpen(true);
+									}}
+									onToggleAuto={() => toggleAuto(r)}
+									onDelete={() => del(r.id)}
+									autoOnTitle="Auto-posting due charges"
+									autoOffTitle="Auto-post off"
+								/>
 							</CardContent>
 						</Card>
 					))}

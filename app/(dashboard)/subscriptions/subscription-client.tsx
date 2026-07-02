@@ -1,9 +1,10 @@
 "use client";
 
-import { Pencil, Plus, RefreshCw, Trash2, Zap } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { apiPost } from "@/lib/api-client";
+import { CardActions } from "@/components/shared/card-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -514,28 +515,16 @@ function Group({
 					<Card key={s.id}>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm">{s.name}</CardTitle>
-							<div className="flex items-center gap-1">
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => onEdit(s)}
-										aria-label="Edit subscription"
-									>
-										<Pencil className="h-3 w-3" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => onToggleAuto(s)}
-										aria-label={s.autoExpense ? "Disable auto-post" : "Enable auto-post"}
-										title={s.autoExpense ? "Auto-posting renewals to Expenses" : "Auto-post off"}
-									>
-										<Zap className={`h-3 w-3 ${s.autoExpense ? "fill-current text-primary" : "text-muted-foreground"}`} />
-									</Button>
-									<Button variant="ghost" size="icon" onClick={() => onDelete(s.id)}>
-										<Trash2 className="h-3 w-3" />
-									</Button>
-								</div>
+							<CardActions
+									auto={s.autoExpense}
+									onEdit={() => onEdit(s)}
+									onToggleAuto={() => onToggleAuto(s)}
+									onDelete={() => onDelete(s.id)}
+									editLabel="Edit subscription"
+									deleteLabel="Delete subscription"
+									autoOnTitle="Auto-posting renewals to Expenses"
+									autoOffTitle="Auto-post off"
+								/>
 						</CardHeader>
 						<CardContent className="pt-0">
 							<p className="text-xs text-muted-foreground">
