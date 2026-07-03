@@ -43,7 +43,7 @@ export async function postDueRecurring(
 						amount: r.amount,
 						currency: r.currency,
 						date: d,
-						tags: r.tags,
+						tags: Array.from(new Set([...r.tags, "recurring"])),
 					})),
 				}),
 				advance,
