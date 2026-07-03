@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { shake_256 } from "js-sha3";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,7 @@ export function HashClient() {
   const [output, setOutput] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const groupedOutput = output.replace(/(.{4})/g, "$1 ").trim();
+  const chunks = output.match(/.{1,4}/g) ?? [];
 
   function handleHash() {
     if (!input) {
@@ -83,12 +82,14 @@ export function HashClient() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="hash-output">Hashed text</Label>
-              <Input
+              <div
                 id="hash-output"
-                readOnly
-                value={groupedOutput}
-                className="font-mono text-sm"
-              />
+                className="flex flex-wrap gap-x-2 gap-y-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+              >
+                {chunks.map((c, i) => (
+                  <span key={i}>{c}</span>
+                ))}
+              </div>
             </div>
             <Button onClick={handleCopy} variant="secondary">
               {copied ? (
