@@ -7,8 +7,9 @@ import { type Period, recurringDueDates } from "@/lib/recurring-dates";
  * idempotent via `lastPostedAt`, batched in a `$transaction`. Expenses post to
  * `Expense`; income posts to `TaxRecord` (type "income"). Honours `endDate`.
  *
- * A recurrence with `lastPostedAt = null` (auto-post just enabled) is baselined
- * to now without backfilling — only charges after enabling are posted.
+ * A recurrence with `lastPostedAt = null` (auto-post just enabled, or freshly
+ * created) backfills every charge from `startDate` through today, so the charge
+ * due on the enable day (and any earlier missed ones) is posted.
  *
  * @param userId restrict to one user, or omit to process every user (cron).
  */
@@ -22,18 +23,10 @@ export async function postDueRecurring(
 	let posted = 0;
 
 	for (const r of rows) {
-		if (r.lastPostedAt == null) {
-			await prisma.recurringTransaction.update({
-				where: { id: r.id },
-				data: { lastPostedAt: now },
-			});
-			continue;
-		}
-
 		const due = recurringDueDates(
 			r.startDate.toISOString(),
 			r.period as Period,
-			r.lastPostedAt.toISOString(),
+			r.lastPostedAt ? r.lastPostedAt.toISOString() : null,
 			r.endDate ? r.endDate.toISOString() : null,
 			now,
 		);
