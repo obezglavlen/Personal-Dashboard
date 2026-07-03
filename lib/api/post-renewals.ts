@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { type Period, renewalsDue } from "@/lib/subscriptions";
+import { autoPostDueDates, type Period } from "@/lib/recurring-dates";
 
 /**
  * Post Expense rows for any subscription renewals that have come due since the
@@ -23,10 +23,8 @@ export async function postDueRenewals(
 	let posted = 0;
 
 	for (const s of subs) {
-		const due = renewalsDue(
-			s.startDate.toISOString(),
-			s.period as Period,
-			s.lastPostedAt ? s.lastPostedAt.toISOString() : null,
+		const due = autoPostDueDates(
+			{ ...s, period: s.period as Period },
 			now,
 		);
 		if (due.length === 0) continue;

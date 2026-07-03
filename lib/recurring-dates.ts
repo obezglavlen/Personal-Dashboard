@@ -110,3 +110,26 @@ export function recurringDueDates(
 	const effRef = cap && cap < refDay ? cap : ref;
 	return renewalsDue(startISO, period, sinceISO, effRef);
 }
+
+/**
+ * Charges an auto-posting item owes right now, from `Date` fields rather than
+ * ISO strings. The single source of truth for auto-post backfill semantics
+ * shared by subscriptions and recurring transactions: a null `lastPostedAt`
+ * (auto-post just enabled, or freshly created) backfills every charge from
+ * `startDate` through `ref`, including the charge due on the enable day; a set
+ * `lastPostedAt` posts only charges strictly after it. `endDate` caps posting.
+ */
+export function autoPostDueDates(item: {
+	startDate: Date;
+	period: Period;
+	lastPostedAt: Date | null;
+	endDate?: Date | null;
+}, ref: Date = new Date()): Date[] {
+	return recurringDueDates(
+		item.startDate.toISOString(),
+		item.period,
+		item.lastPostedAt ? item.lastPostedAt.toISOString() : null,
+		item.endDate ? item.endDate.toISOString() : null,
+		ref,
+	);
+}
