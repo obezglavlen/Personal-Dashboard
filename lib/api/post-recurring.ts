@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { type Period, recurringDueDates } from "@/lib/recurring-dates";
+import { autoPostDueDates, type Period } from "@/lib/recurring-dates";
 
 /**
  * Post rows for any recurring transactions that have come due since they were
@@ -23,11 +23,8 @@ export async function postDueRecurring(
 	let posted = 0;
 
 	for (const r of rows) {
-		const due = recurringDueDates(
-			r.startDate.toISOString(),
-			r.period as Period,
-			r.lastPostedAt ? r.lastPostedAt.toISOString() : null,
-			r.endDate ? r.endDate.toISOString() : null,
+		const due = autoPostDueDates(
+			{ ...r, period: r.period as Period },
 			now,
 		);
 		if (due.length === 0) continue;

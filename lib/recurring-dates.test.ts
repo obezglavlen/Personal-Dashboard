@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { nextRenewal, recurringDueDates, renewalsDue } from "./recurring-dates";
+import {
+	autoPostDueDates,
+	nextRenewal,
+	recurringDueDates,
+	renewalsDue,
+} from "./recurring-dates";
 
 const days = (ds: Date[]) => ds.map((d) => d.toISOString().slice(0, 10));
 
@@ -68,6 +73,43 @@ describe("recurringDueDates", () => {
 			new Date("2026-06-01T00:00:00Z"),
 		);
 		expect(days(due)).toEqual(["2025-05-01", "2026-05-01"]);
+	});
+});
+
+describe("autoPostDueDates", () => {
+	const ref = new Date("2026-07-03T00:00:00Z");
+
+	it("backfills from startDate when lastPostedAt is null", () => {
+		const due = autoPostDueDates(
+			{ startDate: new Date("2026-05-15"), period: "monthly", lastPostedAt: null },
+			ref,
+		);
+		expect(days(due)).toEqual(["2026-05-15", "2026-06-15"]);
+	});
+
+	it("posts only charges after a set lastPostedAt", () => {
+		const due = autoPostDueDates(
+			{
+				startDate: new Date("2026-01-15"),
+				period: "monthly",
+				lastPostedAt: new Date("2026-05-15"),
+			},
+			ref,
+		);
+		expect(days(due)).toEqual(["2026-06-15"]);
+	});
+
+	it("honours endDate cap", () => {
+		const due = autoPostDueDates(
+			{
+				startDate: new Date("2026-01-15"),
+				period: "monthly",
+				lastPostedAt: null,
+				endDate: new Date("2026-03-01"),
+			},
+			ref,
+		);
+		expect(days(due)).toEqual(["2026-01-15", "2026-02-15"]);
 	});
 });
 

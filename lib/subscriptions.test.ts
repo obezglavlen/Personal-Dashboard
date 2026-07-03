@@ -42,6 +42,19 @@ describe("renewalsDue", () => {
 		expect(renewalsDue("2026-01-10", "monthly", "2026-06-10", ref)).toEqual([]);
 	});
 
+	it("backfills from startDate (inclusive) when since is null — auto-post just enabled", () => {
+		const due = renewalsDue("2026-04-15", "monthly", null, ref);
+		expect(due.map((d) => d.toISOString())).toEqual([
+			"2026-04-15T00:00:00.000Z",
+			"2026-05-15T00:00:00.000Z",
+			"2026-06-15T00:00:00.000Z",
+		]);
+	});
+
+	it("posts the renewal due today when since is null", () => {
+		expect(renewalsDue("2026-06-15", "monthly", null, ref)).toEqual([ref]);
+	});
+
 	it("clamps month-end (Jan 31 -> Feb 28 in a non-leap year)", () => {
 		const due = renewalsDue(
 			"2026-01-31",
