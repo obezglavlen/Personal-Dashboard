@@ -37,6 +37,28 @@ describe("recurringDueDates", () => {
 		expect(due).toEqual([]);
 	});
 
+	it("backfills from startDate (inclusive) when since is null — auto-post just enabled", () => {
+		const due = recurringDueDates(
+			"2026-05-15",
+			"monthly",
+			null,
+			null,
+			new Date("2026-07-03T00:00:00Z"),
+		);
+		expect(days(due)).toEqual(["2026-05-15", "2026-06-15"]);
+	});
+
+	it("posts the charge due today when since is null", () => {
+		const due = recurringDueDates(
+			"2026-07-03",
+			"monthly",
+			null,
+			null,
+			new Date("2026-07-03T00:00:00Z"),
+		);
+		expect(days(due)).toEqual(["2026-07-03"]);
+	});
+
 	it("steps annually", () => {
 		const due = recurringDueDates(
 			"2024-05-01",
