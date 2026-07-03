@@ -112,7 +112,7 @@ export function ToolsClient() {
 function HashTool() {
 	const [input, setInput] = useState("");
 	const output = input ? shake_256(input, 256) : "";
-	const grouped = output.replace(/(.{4})/g, "$1 ").trim();
+	const chunks = output.match(/.{1,4}/g) ?? [];
 	return (
 		<ToolCard
 			title="SHAKE-256 hash"
@@ -132,7 +132,14 @@ function HashTool() {
 			{output && (
 				<div className="space-y-2">
 					<Label htmlFor="hash-out">Hash</Label>
-					<Input id="hash-out" readOnly value={grouped} className="font-mono" />
+					<div
+						id="hash-out"
+						className="flex flex-wrap gap-x-2 gap-y-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+					>
+						{chunks.map((c, i) => (
+							<span key={i}>{c}</span>
+						))}
+					</div>
 					<CopyButton value={output} />
 				</div>
 			)}
