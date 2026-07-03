@@ -111,11 +111,12 @@ export function ToolsClient() {
 
 function HashTool() {
 	const [input, setInput] = useState("");
-	const output = input ? shake_256(input, 256).slice(0, 16) : "";
+	const output = input ? shake_256(input, 256) : "";
+	const grouped = output.replace(/(.{4})/g, "$1 ").trim();
 	return (
 		<ToolCard
 			title="SHAKE-256 hash"
-			description="SHA-3 extendable-output, truncated to 16 hex chars."
+			description="SHA-3 extendable-output (64 hex chars)."
 		>
 			<div className="space-y-2">
 				<Label htmlFor="hash-in">Text</Label>
@@ -131,7 +132,7 @@ function HashTool() {
 			{output && (
 				<div className="space-y-2">
 					<Label htmlFor="hash-out">Hash</Label>
-					<Input id="hash-out" readOnly value={output} className="font-mono" />
+					<Input id="hash-out" readOnly value={grouped} className="font-mono" />
 					<CopyButton value={output} />
 				</div>
 			)}
