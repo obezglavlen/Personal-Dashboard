@@ -6,9 +6,10 @@ import { type Period, renewalsDue } from "@/lib/subscriptions";
  * subscription was last posted. Idempotent: `lastPostedAt` advances to the most
  * recent posted renewal, so repeated calls never double-post.
  *
- * A subscription with `lastPostedAt = null` (auto-posting just enabled) is
- * *baselined* to now without backfilling its history — only renewals that
- * occur after enabling are posted.
+ * A subscription with `lastPostedAt = null` (auto-posting just enabled) backfills
+ * every renewal from `startDate` through today, so the renewal due on the enable
+ * day (and any earlier missed ones) is posted. Mirrors
+ * {@link import("./post-recurring").postDueRecurring}.
  *
  * @param userId restrict to one user, or omit to process every user (cron).
  */
@@ -22,19 +23,10 @@ export async function postDueRenewals(
 	let posted = 0;
 
 	for (const s of subs) {
-		// First time enabled: baseline, don't backfill past charges.
-		if (s.lastPostedAt == null) {
-			await prisma.subscription.update({
-				where: { id: s.id },
-				data: { lastPostedAt: now },
-			});
-			continue;
-		}
-
 		const due = renewalsDue(
 			s.startDate.toISOString(),
 			s.period as Period,
-			s.lastPostedAt.toISOString(),
+			s.lastPostedAt ? s.lastPostedAt.toISOString() : null,
 			now,
 		);
 		if (due.length === 0) continue;
