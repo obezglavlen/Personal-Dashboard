@@ -15,12 +15,14 @@ export function HashClient() {
   const [output, setOutput] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const groupedOutput = output.replace(/(.{4})/g, "$1 ").trim();
+
   function handleHash() {
     if (!input) {
       toast.error("Enter text to hash");
       return;
     }
-    const hash = shake_256(input, 256).split("").slice(0, 16).join("");
+    const hash = shake_256(input, 256);
     setOutput(hash);
     setCopied(false);
   }
@@ -76,7 +78,7 @@ export function HashClient() {
         <Card>
           <CardHeader>
             <CardTitle>Output</CardTitle>
-            <CardDescription>SHAKE-256 hash (truncated to 16 hex chars)</CardDescription>
+            <CardDescription>SHAKE-256 hash (64 hex chars)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -84,7 +86,7 @@ export function HashClient() {
               <Input
                 id="hash-output"
                 readOnly
-                value={output}
+                value={groupedOutput}
                 className="font-mono text-sm"
               />
             </div>

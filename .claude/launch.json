@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "dashboard",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "home-dashboard"],
-      "port": 3137
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up"],
+      "port": 3000
     }
   ]
 }
