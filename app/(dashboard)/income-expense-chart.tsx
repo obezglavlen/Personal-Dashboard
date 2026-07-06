@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-	Bar,
-	BarChart,
 	CartesianGrid,
 	Legend,
+	Line,
+	LineChart,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -20,11 +20,13 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { TagInput } from "@/components/ui/tag-input";
+import { bucketKey, bucketLabel, projectForecast } from "@/lib/forecast";
 import { convertToBase, formatMoney } from "@/lib/format";
 import { useAllTags } from "@/lib/hooks/use-all-tags";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useHistoricalRates } from "@/lib/hooks/use-historical-rates";
 import { useResource } from "@/lib/hooks/use-resource";
+import type { Period } from "@/lib/recurring-dates";
 
 type TaxRecord = {
 	id: string;
@@ -42,8 +44,37 @@ type Expense = {
 	tags: string[];
 };
 
+type Subscription = {
+	id: string;
+	price: number;
+	period: Period;
+	startDate: string;
+	currency: string;
+};
+
+type Recurring = {
+	id: string;
+	amount: number;
+	type: "income" | "expense";
+	period: Period;
+	startDate: string;
+	endDate: string | null;
+	currency: string;
+};
+
+type Bucket = {
+	key: string;
+	label: string;
+	income: number | null;
+	expense: number | null;
+	incomeF: number | null;
+	expenseF: number | null;
+};
+
 // Implicit tag applied to tax-type expense records in the dashboard filter.
 const TAX_TAG = "taxes";
+// Trailing months averaged to estimate future monthly tax in the forecast.
+const TAX_LOOKBACK_MONTHS = 6;
 
 // Day-unit periods bucket by day; month-unit periods bucket by month.
 const PERIODS: { label: string; unit: "day" | "month"; count: number }[] = [
@@ -56,24 +87,11 @@ const PERIODS: { label: string; unit: "day" | "month"; count: number }[] = [
 	{ label: "6Y", unit: "month", count: 72 },
 ];
 
-const MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-];
-
 export function IncomeExpenseChart() {
 	const { items: records } = useResource<TaxRecord>("/api/tax-records");
 	const { items: expenses } = useResource<Expense>("/api/expenses");
+	const { items: subs } = useResource<Subscription>("/api/subscriptions");
+	const { items: recurring } = useResource<Recurring>("/api/recurring");
 	const { currency } = useCurrency();
 	const { ratesForDate } = useHistoricalRates(currency);
 	// Default to 1Y (index into PERIODS).
@@ -93,41 +111,34 @@ export function IncomeExpenseChart() {
 		return [...set].sort((a, b) => a.localeCompare(b));
 	}, [catalog, records]);
 
-	const data = useMemo(() => {
-		// Build contiguous buckets ending at the current day/month so empty
-		// periods still render as gaps rather than collapsing. Day-unit periods
-		// bucket by calendar day; month-unit periods by month.
+	const data = useMemo<Bucket[]>(() => {
+		// Build contiguous historical buckets ending at the current day/month so
+		// empty periods still render as gaps rather than collapsing. Day-unit
+		// periods bucket by calendar day; month-unit periods by month.
 		const now = new Date();
 		const byDay = period.unit === "day";
 		const multiYear = !byDay && period.count > 12;
-		const buckets: {
-			key: string;
-			label: string;
-			income: number;
-			expense: number;
-		}[] = [];
+		const buckets: Bucket[] = [];
 		const index = new Map<string, number>();
-
-		// Bucket key for a date, matching the active period's unit.
-		const keyOf = (d: Date) =>
-			byDay
-				? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-				: `${d.getFullYear()}-${d.getMonth()}`;
 
 		for (let i = period.count - 1; i >= 0; i--) {
 			const d = byDay
 				? new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
 				: new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const label = byDay
-				? `${MONTHS[d.getMonth()]} ${d.getDate()}`
-				: multiYear
-					? `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
-					: MONTHS[d.getMonth()];
-			index.set(keyOf(d), buckets.length);
-			buckets.push({ key: keyOf(d), label, income: 0, expense: 0 });
+			index.set(bucketKey(d, byDay), buckets.length);
+			buckets.push({
+				key: bucketKey(d, byDay),
+				label: bucketLabel(d, byDay, multiYear),
+				income: 0,
+				expense: 0,
+				incomeF: null,
+				expenseF: null,
+			});
 		}
 
 		const selected = new Set(tagFilter.map((t) => t.toLowerCase()));
+		const toBase = (amount: number, from: string, iso: string) =>
+			convertToBase(amount, from, currency, ratesForDate(iso));
 
 		// Tax records: income is never tag-filtered; expense carries the implicit
 		// TAX_TAG so a tag filter only counts it when "taxes" is selected.
@@ -137,14 +148,10 @@ export function IncomeExpenseChart() {
 			if (r.type === "expense" && selected.size > 0 && !selected.has(TAX_TAG)) {
 				continue;
 			}
-			const slot = index.get(keyOf(new Date(r.date)));
+			const slot = index.get(bucketKey(new Date(r.date), byDay));
 			if (slot == null) continue;
-			buckets[slot][r.type] += convertToBase(
-				r.amount,
-				r.currency ?? currency,
-				currency,
-				ratesForDate(r.date),
-			);
+			// Non-forecast buckets always start numeric, never null.
+			buckets[slot][r.type]! += toBase(r.amount, r.currency ?? currency, r.date);
 		}
 
 		// Standalone expenses, filtered by selected tags (any-match; none ⇒ all).
@@ -155,18 +162,58 @@ export function IncomeExpenseChart() {
 			) {
 				continue;
 			}
-			const slot = index.get(keyOf(new Date(e.date)));
+			const slot = index.get(bucketKey(new Date(e.date), byDay));
 			if (slot == null) continue;
-			buckets[slot].expense += convertToBase(
-				e.amount,
-				e.currency,
-				currency,
-				ratesForDate(e.date),
-			);
+			buckets[slot].expense! += toBase(e.amount, e.currency, e.date);
+		}
+
+		// Estimate the recurring monthly tax expense from the trailing months, so
+		// the forecast can repeat it forward (there is no recurring-tax model).
+		const taxFrom = new Date(
+			now.getFullYear(),
+			now.getMonth() - TAX_LOOKBACK_MONTHS,
+			now.getDate(),
+		);
+		let taxSum = 0;
+		for (const r of records ?? []) {
+			if (r.type !== "expense" || r.amount == null) continue;
+			const d = new Date(r.date);
+			if (d < taxFrom || d > now) continue;
+			taxSum += toBase(r.amount, r.currency ?? currency, r.date);
+		}
+		const monthlyTaxAvg = taxSum / TAX_LOOKBACK_MONTHS;
+
+		// Bridge: seed the forecast series at the last historical point so the
+		// dashed line connects to the solid line with no gap.
+		const last = buckets[buckets.length - 1];
+		if (last) {
+			last.incomeF = last.income;
+			last.expenseF = last.expense;
+		}
+
+		// Append the forward projection as dashed-only buckets.
+		const forecast = projectForecast({
+			now,
+			unit: period.unit,
+			multiYear,
+			subscriptions: subs ?? [],
+			recurring: recurring ?? [],
+			monthlyTaxAvg,
+			convert: toBase,
+		});
+		for (const f of forecast) {
+			buckets.push({
+				key: f.key,
+				label: f.label,
+				income: null,
+				expense: null,
+				incomeF: f.income,
+				expenseF: f.expense,
+			});
 		}
 
 		return buckets;
-	}, [records, expenses, period, tagFilter, currency, ratesForDate]);
+	}, [records, expenses, subs, recurring, period, tagFilter, currency, ratesForDate]);
 
 	return (
 		<Card>
@@ -175,7 +222,8 @@ export function IncomeExpenseChart() {
 					<CardTitle>Income vs Expense</CardTitle>
 					<CardDescription>
 						{period.unit === "day" ? "Daily" : "Monthly"} totals over the
-						selected period ({currency})
+						selected period, with a dashed{" "}
+						{period.unit === "day" ? "+14d" : "+3mo"} estimate ({currency})
 					</CardDescription>
 				</div>
 				<div className="flex flex-wrap gap-1">
@@ -203,7 +251,7 @@ export function IncomeExpenseChart() {
 				</div>
 				<div className="h-72 w-full">
 					<ResponsiveContainer width="100%" height="100%">
-						<BarChart
+						<LineChart
 							data={data}
 							margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
 						>
@@ -217,7 +265,7 @@ export function IncomeExpenseChart() {
 							<YAxis tick={{ fontSize: 12 }} width={56} />
 							<Tooltip
 								formatter={(v) => formatMoney(Number(v), currency)}
-								cursor={{ fill: "var(--foreground)", fillOpacity: 0.06 }}
+								cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.2 }}
 								contentStyle={{
 									background: "var(--popover)",
 									color: "var(--popover-foreground)",
@@ -236,19 +284,41 @@ export function IncomeExpenseChart() {
 								itemStyle={{ color: "var(--popover-foreground)", padding: 0 }}
 							/>
 							<Legend wrapperStyle={{ fontSize: 12 }} />
-							<Bar
+							<Line
 								dataKey="income"
 								name="Income"
-								fill="#22c55e"
-								radius={[2, 2, 0, 0]}
+								stroke="#22c55e"
+								strokeWidth={2}
+								dot={false}
+								connectNulls
 							/>
-							<Bar
+							<Line
 								dataKey="expense"
 								name="Expense"
-								fill="#ef4444"
-								radius={[2, 2, 0, 0]}
+								stroke="#ef4444"
+								strokeWidth={2}
+								dot={false}
+								connectNulls
 							/>
-						</BarChart>
+							<Line
+								dataKey="incomeF"
+								name="Income (est.)"
+								stroke="#22c55e"
+								strokeWidth={2}
+								strokeDasharray="5 5"
+								dot={false}
+								connectNulls
+							/>
+							<Line
+								dataKey="expenseF"
+								name="Expense (est.)"
+								stroke="#ef4444"
+								strokeWidth={2}
+								strokeDasharray="5 5"
+								dot={false}
+								connectNulls
+							/>
+						</LineChart>
 					</ResponsiveContainer>
 				</div>
 			</CardContent>
