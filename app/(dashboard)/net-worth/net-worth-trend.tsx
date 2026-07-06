@@ -54,7 +54,6 @@ export function NetWorthTrend() {
 	const range = RANGES[rangeIdx];
 
 	const data = useMemo(() => {
-		const longRange = range.days === 0 || range.days > 90;
 		// Anchor the cutoff to UTC midnight (snapshot dates are day-granular at
 		// T00:00Z); a wall-clock Date.now() would drop the oldest expected day for
 		// most of the day. `days - 1` keeps exactly `days` calendar days inclusive.
@@ -65,12 +64,24 @@ export function NetWorthTrend() {
 			now.getUTCDate(),
 		);
 		const cutoff = range.days ? todayUTC - (range.days - 1) * 86_400_000 : 0;
-		return items
-			.filter((s) => range.days === 0 || new Date(s.date).getTime() >= cutoff)
-			.map((s) => ({
-				label: label(s.date, longRange),
-				value: netWorthInBase(s.byCurrency, currency, ratesForDate(s.date)),
-			}));
+		const rows = items.filter(
+			(s) => range.days === 0 || new Date(s.date).getTime() >= cutoff,
+		);
+		// Label granularity follows the *actual* span of the kept rows (items are
+		// oldest-first from the API), not the selected preset. Picking "1Y"/"All"
+		// while only a couple weeks of history exists then still shows day labels
+		// ("Jul 6") instead of collapsing every point to the same "Jul '26".
+		const spanDays =
+			rows.length > 1
+				? (new Date(rows[rows.length - 1].date).getTime() -
+						new Date(rows[0].date).getTime()) /
+					86_400_000
+				: 0;
+		const longRange = spanDays > 90;
+		return rows.map((s) => ({
+			label: label(s.date, longRange),
+			value: netWorthInBase(s.byCurrency, currency, ratesForDate(s.date)),
+		}));
 	}, [items, range, currency, ratesForDate]);
 
 	return (
