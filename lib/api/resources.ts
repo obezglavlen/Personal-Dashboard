@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { accountSchema } from "@/lib/validations/account";
 import { bookmarkSchema } from "@/lib/validations/bookmark";
 import { budgetSchema } from "@/lib/validations/budget";
+import { calendarEventSchema } from "@/lib/validations/calendar";
 import { expenseSchema } from "@/lib/validations/expense";
 import { goalSchema } from "@/lib/validations/goal";
 import { noteSchema } from "@/lib/validations/note";
@@ -12,6 +13,7 @@ import { taxConfigSchema, taxRecordSchema } from "@/lib/validations/tax";
 import {
 	buildAccountData,
 	buildBudgetData,
+	buildCalendarEventData,
 	buildExpenseData,
 	buildGoalData,
 	buildRecurringData,
@@ -272,5 +274,37 @@ export const recurringHandlers = crudHandlers({
 			endDate: endDate ? new Date(endDate) : null,
 		}),
 	}),
+	tagsOf: (i) => i.tags,
+});
+
+export const serializeCalendarEvent = (e: Row) => ({
+	id: e.id,
+	userId: e.userId,
+	title: e.title,
+	description: e.description,
+	location: e.location,
+	startAt: iso(e.startAt),
+	endAt: e.endAt ? iso(e.endAt) : null,
+	allDay: e.allDay,
+	recurrence: e.recurrence,
+	recurrenceEnd: e.recurrenceEnd ? iso(e.recurrenceEnd) : null,
+	reminderMinutes: e.reminderMinutes,
+	tags: e.tags,
+	seriesId: e.seriesId,
+	overrideDate: e.overrideDate ? iso(e.overrideDate) : null,
+	canceled: e.canceled,
+	createdAt: iso(e.createdAt),
+	updatedAt: iso(e.updatedAt),
+});
+
+// Only `list` and `create` are used from here; scoped update/delete live in
+// lib/calendar/service.ts (Google-style this/following/all semantics).
+export const calendarEventHandlers = crudHandlers({
+	delegate: prisma.calendarEvent,
+	createSchema: calendarEventSchema,
+	updateSchema: calendarEventSchema.partial(),
+	orderBy: [{ startAt: "asc" }],
+	serialize: serializeCalendarEvent,
+	toCreateData: buildCalendarEventData,
 	tagsOf: (i) => i.tags,
 });
