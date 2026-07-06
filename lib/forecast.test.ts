@@ -32,12 +32,42 @@ const sumIncome = (b: { income: number }[]) =>
 	b.reduce((s, x) => s + x.income, 0);
 
 describe("projectForecast horizons", () => {
-	it("emits 3 monthly buckets for month-unit", () => {
-		expect(projectForecast(base({ unit: "month" }))).toHaveLength(MONTH_HORIZON);
+	it("emits the current month plus 3 future months for month-unit", () => {
+		expect(projectForecast(base({ unit: "month" }))).toHaveLength(
+			MONTH_HORIZON + 1,
+		);
 	});
 
-	it("emits 14 daily buckets for day-unit", () => {
-		expect(projectForecast(base({ unit: "day" }))).toHaveLength(DAY_HORIZON);
+	it("emits today plus 14 future days for day-unit", () => {
+		expect(projectForecast(base({ unit: "day" }))).toHaveLength(DAY_HORIZON + 1);
+	});
+});
+
+describe("projectForecast current period (index 0)", () => {
+	it("captures a renewal still due later this month", () => {
+		// now = Jul 15; a monthly sub renewing on the 20th is due Jul 20 (this
+		// month, after today) → lands in the current-period bucket.
+		const b = projectForecast(
+			base({
+				subscriptions: [
+					{ price: 7, period: "monthly", startDate: "2026-07-20", currency: "USD" },
+				],
+			}),
+		);
+		expect(b[0].expense).toBeCloseTo(7, 6); // Jul 20 remainder
+		expect(sumExpense(b)).toBeCloseTo(28, 6); // Jul/Aug/Sep/Oct 20 × 7
+	});
+
+	it("leaves the current period empty when nothing remains after today", () => {
+		// Renewal on the 10th already passed (today is the 15th) ⇒ index 0 empty.
+		const b = projectForecast(
+			base({
+				subscriptions: [
+					{ price: 10, period: "monthly", startDate: "2026-01-10", currency: "USD" },
+				],
+			}),
+		);
+		expect(b[0].expense).toBe(0);
 	});
 });
 
@@ -131,15 +161,17 @@ describe("projectForecast recurring transactions", () => {
 });
 
 describe("projectForecast tax estimate", () => {
-	it("repeats the monthly average across each month bucket", () => {
+	it("repeats the monthly average across future months but not the current one", () => {
 		const b = projectForecast(base({ unit: "month", monthlyTaxAvg: 90 }));
-		expect(b.every((x) => x.expense === 90)).toBe(true);
-		expect(sumExpense(b)).toBeCloseTo(270, 6); // 3 × 90
+		expect(b[0].expense).toBe(0); // current period: taxes already recorded
+		expect(b.slice(1).every((x) => x.expense === 90)).toBe(true);
+		expect(sumExpense(b)).toBeCloseTo(270, 6); // 3 future × 90
 	});
 
-	it("prorates the monthly average per day for day-unit", () => {
+	it("prorates the monthly average per future day for day-unit", () => {
 		const b = projectForecast(base({ unit: "day", monthlyTaxAvg: 90 }));
-		expect(b.every((x) => x.expense === 3)).toBe(true); // 90 / 30
-		expect(sumExpense(b)).toBeCloseTo(42, 6); // 14 × 3
+		expect(b[0].expense).toBe(0); // today
+		expect(b.slice(1).every((x) => x.expense === 3)).toBe(true); // 90 / 30
+		expect(sumExpense(b)).toBeCloseTo(42, 6); // 14 future × 3
 	});
 });
