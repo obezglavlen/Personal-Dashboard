@@ -284,11 +284,12 @@ export function IncomeExpenseChart() {
 								itemStyle={{ color: "var(--popover-foreground)", padding: 0 }}
 							/>
 							<Legend wrapperStyle={{ fontSize: 12 }} />
-							{/* Estimate bars sit at the base of the same per-type stack, so
-							    they share the x of the recorded bar: the current partial
-							    period shows the estimate under the actual, and future
+							{/* Estimate bars sit on top of the same per-type stack, so they
+							    share the x of the recorded bar: the current partial period
+							    shows the estimate stacked above the actual, and future
 							    periods show the estimate alone. Outlined faint fill marks
 							    them as estimates rather than recorded totals. */}
+							<Bar dataKey="income" name="Income" stackId="inc" fill="#22c55e" />
 							<Bar
 								dataKey="incomeF"
 								name="Income (est.)"
@@ -298,14 +299,9 @@ export function IncomeExpenseChart() {
 								stroke="#22c55e"
 								strokeWidth={1.5}
 								strokeDasharray="4 2"
-							/>
-							<Bar
-								dataKey="income"
-								name="Income"
-								stackId="inc"
-								fill="#22c55e"
 								radius={[2, 2, 0, 0]}
 							/>
+							<Bar dataKey="expense" name="Expense" stackId="exp" fill="#ef4444" />
 							<Bar
 								dataKey="expenseF"
 								name="Expense (est.)"
@@ -315,12 +311,6 @@ export function IncomeExpenseChart() {
 								stroke="#ef4444"
 								strokeWidth={1.5}
 								strokeDasharray="4 2"
-							/>
-							<Bar
-								dataKey="expense"
-								name="Expense"
-								stackId="exp"
-								fill="#ef4444"
 								radius={[2, 2, 0, 0]}
 							/>
 						</BarChart>
