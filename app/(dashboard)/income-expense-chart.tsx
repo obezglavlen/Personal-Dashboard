@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
+	Bar,
+	BarChart,
 	CartesianGrid,
 	Legend,
-	Line,
-	LineChart,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
@@ -183,16 +183,10 @@ export function IncomeExpenseChart() {
 		}
 		const monthlyTaxAvg = taxSum / TAX_LOOKBACK_MONTHS;
 
-		// Bridge: seed the forecast series at the last historical point so the
-		// dashed line connects to the solid line with no gap.
-		const last = buckets[buckets.length - 1];
-		if (last) {
-			last.incomeF = last.income;
-			last.expenseF = last.expense;
-		}
-
-		// Append the forward projection as dashed-only buckets.
-		const forecast = projectForecast({
+		// Forward projection: index 0 is the current period's not-yet-recorded
+		// remainder (stacked under the actual bar at the same x); the rest are
+		// future estimate-only buckets.
+		const [current, ...future] = projectForecast({
 			now,
 			unit: period.unit,
 			multiYear,
@@ -201,7 +195,13 @@ export function IncomeExpenseChart() {
 			monthlyTaxAvg,
 			convert: toBase,
 		});
-		for (const f of forecast) {
+		const lastActual = buckets[buckets.length - 1];
+		if (lastActual && current) {
+			// 0 ⇒ null so no empty estimate segment/tooltip on the current bar.
+			lastActual.incomeF = current.income || null;
+			lastActual.expenseF = current.expense || null;
+		}
+		for (const f of future) {
 			buckets.push({
 				key: f.key,
 				label: f.label,
@@ -222,7 +222,7 @@ export function IncomeExpenseChart() {
 					<CardTitle>Income vs Expense</CardTitle>
 					<CardDescription>
 						{period.unit === "day" ? "Daily" : "Monthly"} totals over the
-						selected period, with a dashed{" "}
+						selected period, with an outlined{" "}
 						{period.unit === "day" ? "+14d" : "+3mo"} estimate ({currency})
 					</CardDescription>
 				</div>
@@ -251,7 +251,7 @@ export function IncomeExpenseChart() {
 				</div>
 				<div className="h-72 w-full">
 					<ResponsiveContainer width="100%" height="100%">
-						<LineChart
+						<BarChart
 							data={data}
 							margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
 						>
@@ -265,7 +265,7 @@ export function IncomeExpenseChart() {
 							<YAxis tick={{ fontSize: 12 }} width={56} />
 							<Tooltip
 								formatter={(v) => formatMoney(Number(v), currency)}
-								cursor={{ stroke: "var(--foreground)", strokeOpacity: 0.2 }}
+								cursor={{ fill: "var(--foreground)", fillOpacity: 0.06 }}
 								contentStyle={{
 									background: "var(--popover)",
 									color: "var(--popover-foreground)",
@@ -284,41 +284,46 @@ export function IncomeExpenseChart() {
 								itemStyle={{ color: "var(--popover-foreground)", padding: 0 }}
 							/>
 							<Legend wrapperStyle={{ fontSize: 12 }} />
-							<Line
-								dataKey="income"
-								name="Income"
-								stroke="#22c55e"
-								strokeWidth={2}
-								dot={false}
-								connectNulls
-							/>
-							<Line
-								dataKey="expense"
-								name="Expense"
-								stroke="#ef4444"
-								strokeWidth={2}
-								dot={false}
-								connectNulls
-							/>
-							<Line
+							{/* Estimate bars sit at the base of the same per-type stack, so
+							    they share the x of the recorded bar: the current partial
+							    period shows the estimate under the actual, and future
+							    periods show the estimate alone. Outlined faint fill marks
+							    them as estimates rather than recorded totals. */}
+							<Bar
 								dataKey="incomeF"
 								name="Income (est.)"
+								stackId="inc"
+								fill="#22c55e"
+								fillOpacity={0.2}
 								stroke="#22c55e"
-								strokeWidth={2}
-								strokeDasharray="5 5"
-								dot={false}
-								connectNulls
+								strokeWidth={1.5}
+								strokeDasharray="4 2"
 							/>
-							<Line
+							<Bar
+								dataKey="income"
+								name="Income"
+								stackId="inc"
+								fill="#22c55e"
+								radius={[2, 2, 0, 0]}
+							/>
+							<Bar
 								dataKey="expenseF"
 								name="Expense (est.)"
+								stackId="exp"
+								fill="#ef4444"
+								fillOpacity={0.2}
 								stroke="#ef4444"
-								strokeWidth={2}
-								strokeDasharray="5 5"
-								dot={false}
-								connectNulls
+								strokeWidth={1.5}
+								strokeDasharray="4 2"
 							/>
-						</LineChart>
+							<Bar
+								dataKey="expense"
+								name="Expense"
+								stackId="exp"
+								fill="#ef4444"
+								radius={[2, 2, 0, 0]}
+							/>
+						</BarChart>
 					</ResponsiveContainer>
 				</div>
 			</CardContent>

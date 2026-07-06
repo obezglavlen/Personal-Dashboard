@@ -106,10 +106,12 @@ function occToLocal(occ: Date): Date {
 }
 
 /**
- * Future-only buckets ({@link ForecastBucket}) starting at the next unit after
- * `now`. Every projected amount is converted to base currency; the tax estimate
- * is spread flat across the window (per month, or prorated per day). Occurrences
- * are strictly after today, so they never overlap the historical actuals.
+ * Forecast buckets ({@link ForecastBucket}), index 0 = the current period and
+ * indexes 1…horizon = the future window. Every bucket counts only charges dated
+ * strictly after today, so the current period holds just its not-yet-recorded
+ * remainder — the chart stacks that on top of the recorded actual for the same
+ * period, and draws the future buckets as estimate-only bars. Every projected
+ * amount is converted to base currency.
  */
 export function projectForecast(input: ForecastInput): ForecastBucket[] {
 	const { now, unit, subscriptions, recurring, monthlyTaxAvg, convert } = input;
@@ -117,11 +119,10 @@ export function projectForecast(input: ForecastInput): ForecastBucket[] {
 	const multiYear = input.multiYear ?? false;
 	const horizon = byDay ? DAY_HORIZON : MONTH_HORIZON;
 
-	// Future bucket skeleton (i = 1 skips today; the chart's last historical
-	// bucket already covers the current day/month).
+	// Bucket skeleton from the current period (i = 0) through the horizon.
 	const buckets: ForecastBucket[] = [];
 	const index = new Map<string, number>();
-	for (let i = 1; i <= horizon; i++) {
+	for (let i = 0; i <= horizon; i++) {
 		const d = byDay
 			? new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
 			: new Date(now.getFullYear(), now.getMonth() + i, 1);
@@ -166,11 +167,12 @@ export function projectForecast(input: ForecastInput): ForecastBucket[] {
 		}
 	}
 
-	// Tax estimate: repeat the recent monthly average across the window (prorated
-	// per day for day-unit forecasts).
+	// Tax estimate: repeat the recent monthly average across FUTURE buckets only
+	// (prorated per day for day-unit forecasts). Skip index 0 — the current
+	// period's taxes are already partly recorded as actuals.
 	if (monthlyTaxAvg > 0) {
 		const perBucket = byDay ? monthlyTaxAvg / DAYS_PER_MONTH : monthlyTaxAvg;
-		for (const b of buckets) b.expense += perBucket;
+		for (let k = 1; k < buckets.length; k++) buckets[k].expense += perBucket;
 	}
 
 	return buckets;
