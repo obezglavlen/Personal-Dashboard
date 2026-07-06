@@ -31,6 +31,7 @@ type SettingsData = {
 	notifyBudgets: boolean;
 	notifyTasks: boolean;
 	notifyInsights: boolean;
+	notifyEvents: boolean;
 	budgetAlertThreshold: number;
 };
 
@@ -44,6 +45,7 @@ export function SettingsClient() {
 	const [notifyBudgets, setNotifyBudgets] = useState(true);
 	const [notifyTasks, setNotifyTasks] = useState(true);
 	const [notifyInsights, setNotifyInsights] = useState(true);
+	const [notifyEvents, setNotifyEvents] = useState(true);
 	const [budgetAlertThreshold, setBudgetAlertThreshold] = useState(80);
 	const [savingNotif, setSavingNotif] = useState(false);
 	const [testingNotif, setTestingNotif] = useState(false);
@@ -63,6 +65,7 @@ export function SettingsClient() {
 				setNotifyBudgets(data.notifyBudgets);
 				setNotifyTasks(data.notifyTasks);
 				setNotifyInsights(data.notifyInsights ?? true);
+				setNotifyEvents(data.notifyEvents ?? true);
 				setBudgetAlertThreshold(data.budgetAlertThreshold ?? 80);
 			})
 			.catch(() => toast.error("Failed to load settings"));
@@ -102,6 +105,7 @@ export function SettingsClient() {
 				notifyBudgets,
 				notifyTasks,
 				notifyInsights,
+				notifyEvents,
 				// Clamp into the API's accepted [1,100]; a cleared field coerces to 0
 				// (Number("") === 0), which would otherwise 400 the entire save.
 				budgetAlertThreshold: Math.min(
@@ -302,7 +306,8 @@ export function SettingsClient() {
 						</CardTitle>
 						<CardDescription>
 							Get a daily Telegram digest of upcoming renewals, budgets near or
-							over cap, and overdue tasks.
+							over cap, overdue tasks, and calendar events you asked to be
+							reminded about.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -355,6 +360,12 @@ export function SettingsClient() {
 										label: "Monthly spending insight (1st of month)",
 										checked: notifyInsights,
 										set: setNotifyInsights,
+									},
+									{
+										id: "notify-events",
+										label: "Calendar events with a reminder set",
+										checked: notifyEvents,
+										set: setNotifyEvents,
 									},
 								].map((row) => (
 									<label

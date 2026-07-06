@@ -32,10 +32,19 @@ export interface DigestTask {
 	status: string;
 }
 
+/** A calendar event whose reminder lead time has been reached (already filtered
+ *  by the caller — see {@link import("@/lib/calendar/expand").upcomingReminders}). */
+export interface DigestEvent {
+	title: string;
+	start: string;
+	allDay: boolean;
+}
+
 export interface DigestPrefs {
 	renewals: boolean;
 	budgets: boolean;
 	tasks: boolean;
+	events: boolean;
 	/** Fraction of cap (0–1) at/above which a budget is surfaced. */
 	budgetThreshold: number;
 }
@@ -46,6 +55,8 @@ export interface DigestData {
 	/** Current-month expenses (already scoped by the caller). */
 	expenses: ExpenseLike[];
 	tasks: DigestTask[];
+	/** Calendar reminders due today (already filtered by the caller). */
+	events: DigestEvent[];
 	displayCurrency: string;
 	rates: Record<string, number>;
 	prefs: DigestPrefs;
@@ -126,6 +137,16 @@ export function buildDigest(data: DigestData, now: Date): string | null {
 			);
 			sections.push(`<b>✅ Tasks</b>\n${lines.join("\n")}`);
 		}
+	}
+
+	if (data.prefs.events && data.events.length > 0) {
+		const lines = data.events
+			.slice(0, 8)
+			.map(
+				(e) =>
+					`• ${escapeHtml(e.title)} (${dueLabel(daysUntil(new Date(e.start), now))})`,
+			);
+		sections.push(`<b>📅 Events</b>\n${lines.join("\n")}`);
 	}
 
 	if (sections.length === 0) return null;

@@ -1,4 +1,6 @@
+import { serializeCalendarEvent } from "@/lib/api/resources";
 import { currentMonthRange } from "@/lib/budget";
+import { type CalendarEventRow, upcomingReminders } from "@/lib/calendar/expand";
 import { prisma } from "@/lib/db";
 import { getRates } from "@/lib/rates";
 import type { Period } from "@/lib/subscriptions";
@@ -34,21 +36,28 @@ export async function sendDailyDigests(
 		try {
 			const displayCurrency = s.currency || "USD";
 
-			const [subs, budgets, expenses, tasks, rates] = await Promise.all([
-				prisma.subscription.findMany({ where: { userId: s.userId } }),
-				prisma.budget.findMany({ where: { userId: s.userId } }),
-				prisma.expense.findMany({
-					where: { userId: s.userId, date: { gte: start, lt: end } },
-				}),
-				prisma.task.findMany({
-					where: {
-						userId: s.userId,
-						status: { not: "done" },
-						dueDate: { not: null },
-					},
-				}),
-				getRates(displayCurrency),
-			]);
+			const [subs, budgets, expenses, tasks, calendarRows, rates] =
+				await Promise.all([
+					prisma.subscription.findMany({ where: { userId: s.userId } }),
+					prisma.budget.findMany({ where: { userId: s.userId } }),
+					prisma.expense.findMany({
+						where: { userId: s.userId, date: { gte: start, lt: end } },
+					}),
+					prisma.task.findMany({
+						where: {
+							userId: s.userId,
+							status: { not: "done" },
+							dueDate: { not: null },
+						},
+					}),
+					prisma.calendarEvent.findMany({ where: { userId: s.userId } }),
+					getRates(displayCurrency),
+				]);
+
+			const events = upcomingReminders(
+				calendarRows.map(serializeCalendarEvent) as CalendarEventRow[],
+				now,
+			);
 
 			const data: DigestData = {
 				subscriptions: subs.map((x) => ({
@@ -75,12 +84,14 @@ export async function sendDailyDigests(
 					dueDate: t.dueDate ? t.dueDate.toISOString() : null,
 					status: t.status,
 				})),
+				events,
 				displayCurrency,
 				rates,
 				prefs: {
 					renewals: s.notifyRenewals,
 					budgets: s.notifyBudgets,
 					tasks: s.notifyTasks,
+					events: s.notifyEvents ?? true,
 					budgetThreshold: (s.budgetAlertThreshold ?? 80) / 100,
 				},
 			};

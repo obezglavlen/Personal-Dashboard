@@ -16,6 +16,7 @@ export const WIDGETS = [
 	{ id: "budget-status", title: "Budget status" },
 	{ id: "upcoming-renewals", title: "Upcoming renewals" },
 	{ id: "due-tasks", title: "Tasks due soon" },
+	{ id: "upcoming-events", title: "Upcoming events" },
 	{ id: "recent-bookmarks", title: "Recent bookmarks" },
 	{ id: "recent-tasks", title: "Recent tasks" },
 ] as const;

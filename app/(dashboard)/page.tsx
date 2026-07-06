@@ -29,6 +29,7 @@ import { DueTasksWidget } from "./due-tasks-widget";
 import { IncomeExpenseChart } from "./income-expense-chart";
 import { NetWorthWidget } from "./net-worth-widget";
 import { RenewalsWidget } from "./renewals-widget";
+import { UpcomingEventsWidget } from "./upcoming-events-widget";
 
 export default async function DashboardPage() {
 	// Guard here too, not just in the layout: layout and page render in parallel
@@ -165,6 +166,7 @@ export default async function DashboardPage() {
 		"budget-status": <BudgetWidget />,
 		"upcoming-renewals": <RenewalsWidget />,
 		"due-tasks": <DueTasksWidget />,
+		"upcoming-events": <UpcomingEventsWidget />,
 		"recent-bookmarks": (
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0">

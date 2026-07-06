@@ -33,6 +33,7 @@ model User {
   netWorthSnapshots NetWorthSnapshot[]
   recurringTransactions RecurringTransaction[]
   tags              Tag[]
+  calendarEvents    CalendarEvent[]
 }
 
 // Per-user tag catalog: the shared set of tags used for autocomplete across all
@@ -146,6 +147,9 @@ model UserSettings {
   notifyTasks     Boolean @default(true)
   // Monthly AI spending-insight message (separate from the daily digest).
   notifyInsights  Boolean @default(true)
+  // Calendar events with a reminder set are surfaced in the daily digest once
+  // their "remind before" lead time is reached (see CalendarEvent.reminderMinutes).
+  notifyEvents    Boolean @default(true)
   // Last time a monthly insight was sent — makes the monthly job idempotent so a
   // timed-out/re-run invocation never double-sends or drops users.
   lastInsightAt   DateTime?
@@ -327,4 +331,39 @@ model ExchangeRateSnapshot {
 
   @@unique([base, date])
   @@index([date])
+}
+
+// A personal-calendar event. A row is one of three things:
+//   1. a single event         — `recurrence = "none"`, `seriesId = null`
+//   2. a recurring master      — `recurrence != "none"`, `seriesId = null`
+//   3. a single-occurrence override of a master (Google-style "edit this
+//      event"/"delete this event") — `seriesId` set, `overrideDate` = the
+//      original occurrence it replaces. `canceled = true` makes it a tombstone
+//      that hides that one occurrence; otherwise it supplies replacement fields.
+// Occurrences of a master are expanded on read (see lib/calendar) rather than
+// stored, so an infinite series costs one row. `reminderMinutes` (minutes
+// before `startAt`) drives the daily-digest heads-up when a reminder is set.
+model CalendarEvent {
+  id              String    @id @default(cuid())
+  userId          String
+  title           String
+  description     String?
+  location        String?
+  startAt         DateTime
+  endAt           DateTime?
+  allDay          Boolean   @default(false)
+  recurrence      String    @default("none") // none | daily | weekly | monthly | yearly
+  recurrenceEnd   DateTime?
+  reminderMinutes Int?
+  tags            String[]  @default([])
+  seriesId        String?
+  overrideDate    DateTime?
+  canceled        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, startAt])
+  @@index([seriesId])
 }

@@ -9,12 +9,14 @@ function base(overrides: Partial<DigestData> = {}): DigestData {
 		budgets: [],
 		expenses: [],
 		tasks: [],
+		events: [],
 		displayCurrency: "USD",
 		rates: {},
 		prefs: {
 			renewals: true,
 			budgets: true,
 			tasks: true,
+			events: true,
 			budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
 		},
 		...overrides,
@@ -61,6 +63,7 @@ describe("buildDigest", () => {
 					renewals: true,
 					budgets: false,
 					tasks: true,
+					events: true,
 					budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
 				},
 			},
@@ -118,6 +121,24 @@ describe("buildDigest", () => {
 		expect(msg).toContain("Call bank");
 		expect(msg).not.toContain("Future thing");
 		expect(msg).not.toContain("Old done");
+	});
+
+	it("lists calendar event reminders and honors the events pref", () => {
+		const data = base({
+			events: [
+				{ title: "Dentist", start: "2026-06-16T09:00:00Z", allDay: false },
+			],
+		});
+		const msg = buildDigest(data, now);
+		expect(msg).toContain("Events");
+		expect(msg).toContain("Dentist");
+		expect(msg).toContain("tomorrow");
+		// With events off and nothing else to report, the digest is empty.
+		const off = buildDigest(
+			{ ...data, prefs: { ...data.prefs, events: false } },
+			now,
+		);
+		expect(off).toBeNull();
 	});
 
 	it("escapes HTML in user-provided names", () => {

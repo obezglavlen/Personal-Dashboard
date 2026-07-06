@@ -1,6 +1,7 @@
 import type { AccountInput } from "@/lib/validations/account";
 import type { BookmarkInput } from "@/lib/validations/bookmark";
 import type { BudgetInput } from "@/lib/validations/budget";
+import type { CalendarEventInput } from "@/lib/validations/calendar";
 import type { ExpenseInput } from "@/lib/validations/expense";
 import type { GoalInput } from "@/lib/validations/goal";
 import type { NoteInput } from "@/lib/validations/note";
@@ -85,6 +86,37 @@ export function buildAccountData(input: AccountInput, userId: string) {
 		...rest,
 		currency: currency ?? "USD",
 		type: type ?? "cash",
+		userId,
+	};
+}
+
+export function buildCalendarEventData(
+	input: CalendarEventInput,
+	userId: string,
+) {
+	const {
+		startAt,
+		endAt,
+		recurrenceEnd,
+		recurrence,
+		allDay,
+		description,
+		location,
+		reminderMinutes,
+		tags,
+		...rest
+	} = input;
+	return {
+		...rest, // title
+		description: description ?? null,
+		location: location ?? null,
+		allDay: allDay ?? false,
+		recurrence: recurrence ?? "none",
+		startAt: new Date(startAt),
+		endAt: endAt ? new Date(endAt) : null,
+		recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+		reminderMinutes: reminderMinutes ?? null,
+		tags: tags ?? [],
 		userId,
 	};
 }
