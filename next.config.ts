@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
 	async headers() {
 		return [{ source: "/:path*", headers: securityHeaders }];
 	},
+	// The standalone /hasher page was superseded by the Hash tab on /tools.
+	async redirects() {
+		return [{ source: "/hasher", destination: "/tools", permanent: true }];
+	},
 };
 
 export default nextConfig;
