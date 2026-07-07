@@ -16,6 +16,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { parseColor, toHex, toHsl, toOklch, toRgb } from "@/lib/tools/color";
+import { diffLines } from "@/lib/tools/diff";
+import { runRegex } from "@/lib/tools/regex";
+import { decodeComponent, encodeComponent, parseQuery } from "@/lib/tools/url";
 
 /** Small copy-to-clipboard button shared by every tool. */
 function CopyButton({ value }: { value: string }) {
@@ -84,6 +88,10 @@ export function ToolsClient() {
 					<TabsTrigger value="jwt">JWT</TabsTrigger>
 					<TabsTrigger value="uuid">UUID</TabsTrigger>
 					<TabsTrigger value="timestamp">Timestamp</TabsTrigger>
+					<TabsTrigger value="color">Color</TabsTrigger>
+					<TabsTrigger value="regex">Regex</TabsTrigger>
+					<TabsTrigger value="url">URL</TabsTrigger>
+					<TabsTrigger value="diff">Diff</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="hash">
@@ -103,6 +111,18 @@ export function ToolsClient() {
 				</TabsContent>
 				<TabsContent value="timestamp">
 					<TimestampTool />
+				</TabsContent>
+				<TabsContent value="color">
+					<ColorTool />
+				</TabsContent>
+				<TabsContent value="regex">
+					<RegexTool />
+				</TabsContent>
+				<TabsContent value="url">
+					<UrlTool />
+				</TabsContent>
+				<TabsContent value="diff">
+					<DiffTool />
 				</TabsContent>
 			</Tabs>
 		</div>
@@ -444,6 +464,322 @@ function TimestampTool() {
 				</div>
 			</div>
 			{error && <p className="text-sm text-destructive">{error}</p>}
+		</ToolCard>
+	);
+}
+
+function ColorTool() {
+	const [input, setInput] = useState("#3366cc");
+	const parsed = parseColor(input);
+	const formats = parsed
+		? [
+				{ label: "HEX", value: toHex(parsed) },
+				{ label: "RGB", value: toRgb(parsed) },
+				{ label: "HSL", value: toHsl(parsed) },
+				{ label: "OKLCH", value: toOklch(parsed) },
+			]
+		: [];
+	return (
+		<ToolCard
+			title="Color converter"
+			description="Convert between HEX, RGB, HSL and OKLCH. Accepts hex, rgb() or hsl()."
+		>
+			<div className="space-y-2">
+				<Label htmlFor="color-in">Color</Label>
+				<div className="flex items-center gap-3">
+					<Input
+						id="color-in"
+						value={input}
+						onChange={(e) => setInput(e.target.value)}
+						placeholder="#3366cc"
+						className="font-mono"
+					/>
+					<div
+						className="h-9 w-9 shrink-0 rounded-md border border-border"
+						style={parsed ? { background: toRgb(parsed) } : undefined}
+						title="Color preview"
+					/>
+				</div>
+			</div>
+			{parsed ? (
+				<div className="space-y-2">
+					{formats.map((f) => (
+						<div
+							key={f.label}
+							className="flex items-center justify-between gap-2 rounded-md border border-border p-2"
+						>
+							<div className="flex min-w-0 items-baseline gap-2">
+								<span className="w-14 shrink-0 text-xs text-muted-foreground">
+									{f.label}
+								</span>
+								<code className="truncate font-mono text-sm">{f.value}</code>
+							</div>
+							<CopyButton value={f.value} />
+						</div>
+					))}
+				</div>
+			) : (
+				input && <p className="text-sm text-destructive">Unrecognized color.</p>
+			)}
+		</ToolCard>
+	);
+}
+
+const REGEX_FLAGS = ["g", "i", "m", "s", "u"] as const;
+
+function RegexTool() {
+	const [pattern, setPattern] = useState("");
+	const [flags, setFlags] = useState("g");
+	const [text, setText] = useState("");
+	const result = runRegex(pattern, flags, text);
+
+	function toggleFlag(flag: string) {
+		setFlags((prev) =>
+			prev.includes(flag) ? prev.replace(flag, "") : prev + flag,
+		);
+	}
+
+	// Split the test string into matched / unmatched segments for highlighting.
+	const segments: { text: string; match: boolean }[] = [];
+	if (!result.error) {
+		let cursor = 0;
+		for (const m of result.matches) {
+			if (m.index > cursor) {
+				segments.push({ text: text.slice(cursor, m.index), match: false });
+			}
+			segments.push({
+				text: text.slice(m.index, m.index + m.match.length),
+				match: true,
+			});
+			cursor = m.index + m.match.length;
+		}
+		if (cursor < text.length) {
+			segments.push({ text: text.slice(cursor), match: false });
+		}
+	}
+
+	return (
+		<ToolCard
+			title="Regex tester"
+			description="Test a regular expression against sample text. Matches are highlighted."
+		>
+			<div className="space-y-2">
+				<Label htmlFor="re-pattern">Pattern</Label>
+				<Input
+					id="re-pattern"
+					value={pattern}
+					onChange={(e) => setPattern(e.target.value)}
+					placeholder="\d+"
+					className="font-mono"
+				/>
+			</div>
+			<div className="flex flex-wrap gap-2">
+				{REGEX_FLAGS.map((flag) => (
+					<Button
+						key={flag}
+						size="sm"
+						variant={flags.includes(flag) ? "default" : "outline"}
+						onClick={() => toggleFlag(flag)}
+						className="font-mono"
+					>
+						{flag}
+					</Button>
+				))}
+			</div>
+			<div className="space-y-2">
+				<Label htmlFor="re-text">Test string</Label>
+				<Textarea
+					id="re-text"
+					rows={4}
+					value={text}
+					onChange={(e) => setText(e.target.value)}
+					placeholder="Sample text to search…"
+					className="resize-none font-mono text-sm"
+				/>
+			</div>
+			{result.error ? (
+				<p className="text-sm text-destructive">{result.error}</p>
+			) : (
+				pattern && (
+					<div className="space-y-2">
+						<p className="text-sm text-muted-foreground">
+							{result.count} {result.count === 1 ? "match" : "matches"}
+						</p>
+						{segments.length > 0 && (
+							<div className="whitespace-pre-wrap break-words rounded-md border border-input bg-background px-3 py-2 font-mono text-sm">
+								{segments.map((seg, i) =>
+									seg.match ? (
+										<mark
+											key={i}
+											className="rounded-sm bg-primary/30 text-foreground"
+										>
+											{seg.text}
+										</mark>
+									) : (
+										<span key={i}>{seg.text}</span>
+									),
+								)}
+							</div>
+						)}
+					</div>
+				)
+			)}
+		</ToolCard>
+	);
+}
+
+function UrlTool() {
+	const [raw, setRaw] = useState("");
+	const [encoded, setEncoded] = useState("");
+	const [error, setError] = useState<string | null>(null);
+	const [query, setQuery] = useState("");
+	const params = parseQuery(query);
+
+	function encode() {
+		setEncoded(encodeComponent(raw));
+		setError(null);
+	}
+	function decode() {
+		const result = decodeComponent(encoded);
+		if (result.error) {
+			setError(result.error);
+			return;
+		}
+		setRaw(result.value ?? "");
+		setError(null);
+	}
+
+	return (
+		<ToolCard
+			title="URL tools"
+			description="Encode or decode URL components, and split a query string into parameters."
+		>
+			<div className="space-y-2">
+				<Label htmlFor="url-raw">Text</Label>
+				<Textarea
+					id="url-raw"
+					rows={2}
+					value={raw}
+					onChange={(e) => setRaw(e.target.value)}
+					placeholder="a b&c=d"
+					className="resize-none font-mono text-sm"
+				/>
+			</div>
+			<div className="flex gap-2">
+				<Button size="sm" onClick={encode} disabled={!raw}>
+					Encode ↓
+				</Button>
+				<Button size="sm" variant="outline" onClick={decode} disabled={!encoded}>
+					↑ Decode
+				</Button>
+			</div>
+			<div className="space-y-2">
+				<Label htmlFor="url-enc">Encoded</Label>
+				<Textarea
+					id="url-enc"
+					rows={2}
+					value={encoded}
+					onChange={(e) => setEncoded(e.target.value)}
+					className="resize-none font-mono text-sm"
+				/>
+				<CopyButton value={encoded} />
+			</div>
+			{error && <p className="text-sm text-destructive">{error}</p>}
+
+			<div className="space-y-2">
+				<Label htmlFor="url-query">Query string</Label>
+				<Input
+					id="url-query"
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
+					placeholder="https://example.com?a=1&b=two%20words"
+					className="font-mono"
+				/>
+			</div>
+			{params.length > 0 && (
+				<ul className="space-y-2">
+					{params.map((p, i) => (
+						<li
+							key={`${p.key}-${i}`}
+							className="flex items-center justify-between gap-2 rounded-md border border-border p-2"
+						>
+							<div className="flex min-w-0 gap-2">
+								<code className="shrink-0 font-mono text-sm text-muted-foreground">
+									{p.key}
+								</code>
+								<code className="truncate font-mono text-sm">{p.value}</code>
+							</div>
+							<CopyButton value={p.value} />
+						</li>
+					))}
+				</ul>
+			)}
+		</ToolCard>
+	);
+}
+
+const DIFF_PREFIX = { eq: " ", add: "+", del: "-" } as const;
+const DIFF_ROW_CLASS = {
+	eq: "",
+	add: "bg-primary/15",
+	del: "bg-destructive/15 text-destructive",
+} as const;
+
+function DiffTool() {
+	const [left, setLeft] = useState("");
+	const [right, setRight] = useState("");
+	const result = left || right ? diffLines(left, right) : [];
+	const added = result.filter((l) => l.type === "add").length;
+	const removed = result.filter((l) => l.type === "del").length;
+
+	return (
+		<ToolCard
+			title="Text diff"
+			description="Compare two blocks of text line by line."
+		>
+			<div className="grid gap-4 sm:grid-cols-2">
+				<div className="space-y-2">
+					<Label htmlFor="diff-left">Original</Label>
+					<Textarea
+						id="diff-left"
+						rows={6}
+						value={left}
+						onChange={(e) => setLeft(e.target.value)}
+						className="resize-none font-mono text-sm"
+					/>
+				</div>
+				<div className="space-y-2">
+					<Label htmlFor="diff-right">Changed</Label>
+					<Textarea
+						id="diff-right"
+						rows={6}
+						value={right}
+						onChange={(e) => setRight(e.target.value)}
+						className="resize-none font-mono text-sm"
+					/>
+				</div>
+			</div>
+			{result.length > 0 && (
+				<div className="space-y-2">
+					<p className="flex gap-3 text-sm">
+						<span className="text-primary">+{added}</span>
+						<span className="text-destructive">−{removed}</span>
+					</p>
+					<div className="overflow-x-auto rounded-md border border-input bg-background py-1 font-mono text-sm">
+						{result.map((l, i) => (
+							<div
+								key={i}
+								className={`flex gap-2 whitespace-pre px-3 py-0.5 ${DIFF_ROW_CLASS[l.type]}`}
+							>
+								<span className="select-none text-muted-foreground">
+									{DIFF_PREFIX[l.type]}
+								</span>
+								<span>{l.line || " "}</span>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 		</ToolCard>
 	);
 }
