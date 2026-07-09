@@ -14,8 +14,20 @@ export async function syncTags(
 ): Promise<void> {
 	const names = normalizeTags(tags);
 	if (names.length === 0) return;
+
+	// The (userId, name) unique index is case-sensitive, so an exact-match
+	// createMany would still let "Food" and "food" coexist. Drop any name that
+	// already matches an existing tag case-insensitively before inserting.
+	const existing = await prisma.tag.findMany({
+		where: { userId },
+		select: { name: true },
+	});
+	const existingKeys = new Set(existing.map((t) => t.name.toLowerCase()));
+	const newNames = names.filter((name) => !existingKeys.has(name.toLowerCase()));
+	if (newNames.length === 0) return;
+
 	await prisma.tag.createMany({
-		data: names.map((name) => ({ userId, name })),
+		data: newNames.map((name) => ({ userId, name })),
 		skipDuplicates: true,
 	});
 }
