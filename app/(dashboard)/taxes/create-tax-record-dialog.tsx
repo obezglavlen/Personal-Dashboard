@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -425,6 +426,11 @@ export function CreateTaxRecordDialog({
 					</div>
 
 					<DialogFooter>
+						<DialogClose asChild>
+							<Button type="button" variant="outline">
+								Cancel
+							</Button>
+						</DialogClose>
 						<Button type="submit">{submitLabel}</Button>
 					</DialogFooter>
 				</form>

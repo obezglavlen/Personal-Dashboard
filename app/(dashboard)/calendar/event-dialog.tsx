@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -266,9 +267,12 @@ export function EventDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] overflow-y-auto">
+			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>{editing ? "Edit event" : "New event"}</DialogTitle>
+					<DialogDescription>
+						Set the time, repeat rule, reminder, and tags for this event.
+					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={onSubmit} className="space-y-4">
 					<div className="space-y-2">
@@ -428,7 +432,7 @@ export function EventDialog({
 						/>
 					</div>
 
-					<DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+					<DialogFooter className="sm:justify-between">
 						{editing ? (
 							<Button
 								type="button"
@@ -440,11 +444,18 @@ export function EventDialog({
 								<Trash2 className="mr-2 h-4 w-4" /> Delete
 							</Button>
 						) : (
-							<span />
+							<span className="hidden sm:block" />
 						)}
-						<Button type="submit" disabled={busy}>
-							{editing ? "Save" : "Create"}
-						</Button>
+						<div className="flex flex-col-reverse gap-2 sm:flex-row">
+							<DialogClose asChild>
+								<Button type="button" variant="outline" disabled={busy}>
+									Cancel
+								</Button>
+							</DialogClose>
+							<Button type="submit" disabled={busy}>
+								{editing ? "Save" : "Create"}
+							</Button>
+						</div>
 					</DialogFooter>
 				</form>
 			</DialogContent>

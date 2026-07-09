@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -188,6 +189,11 @@ export function CreateBudgetDialog({
 					</div>
 
 					<DialogFooter>
+						<DialogClose asChild>
+							<Button type="button" variant="outline">
+								Cancel
+							</Button>
+						</DialogClose>
 						<Button type="submit">{submitLabel}</Button>
 					</DialogFooter>
 				</form>
