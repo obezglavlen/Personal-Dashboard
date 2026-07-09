@@ -31,6 +31,7 @@ import {
 } from "@/lib/reports/range";
 import { IncomeExpenseChart } from "../income-expense-chart";
 import type { Subscription } from "../subscriptions/subscription-client";
+import { TotalNetChart } from "../total-net-chart";
 
 type TaxRecord = {
 	id: string;
@@ -233,6 +234,8 @@ export function ReportsClient() {
 			</div>
 
 			<IncomeExpenseChart />
+
+			<TotalNetChart />
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
 				<CategoryPie
