@@ -185,17 +185,14 @@ export const incomeHandlers = crudHandlers({
 	orderBy: [{ date: "desc" }, { createdAt: "desc" }],
 	include: { taxConfig: true },
 	serialize: serializeIncome,
-	toCreateData: ({ month, year, ...rest }, userId) => ({
+	toCreateData: ({ date, ...rest }, userId) => ({
 		...rest,
-		date: new Date(Date.UTC(year, month - 1, 1)),
+		date: date ? new Date(date) : new Date(),
 		userId,
 	}),
-	toUpdateData: ({ month, year, ...rest }) => ({
+	toUpdateData: ({ date, ...rest }) => ({
 		...rest,
-		...(month !== undefined &&
-			year !== undefined && {
-				date: new Date(Date.UTC(year, month - 1, 1)),
-			}),
+		...(date !== undefined && { date: date ? new Date(date) : new Date() }),
 	}),
 });
 
