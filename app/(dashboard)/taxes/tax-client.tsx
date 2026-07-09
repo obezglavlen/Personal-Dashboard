@@ -21,12 +21,6 @@ import {
 	type TaxRecord,
 } from "./create-tax-record-dialog";
 
-const TYPE_LABEL: Record<TaxRecord["type"], string> = {
-	expense: "Expense",
-	declaration_sent: "Declaration Sent",
-	declaration_todo: "Declaration To Do",
-};
-
 type Mode = { kind: "create" } | { kind: "edit"; record: TaxRecord };
 
 export function TaxClient() {
@@ -35,9 +29,6 @@ export function TaxClient() {
 		mutate,
 		remove: removeRecord,
 	} = useResource<TaxRecord>("/api/tax-records");
-	const [typeFilter, setTypeFilter] = useState<"all" | TaxRecord["type"]>(
-		"all",
-	);
 	const [configFilter, setConfigFilter] = useState<string>("all");
 	const [search, setSearch] = useState("");
 	const [open, setOpen] = useState(false);
@@ -49,7 +40,9 @@ export function TaxClient() {
 	const filtered = useMemo(() => {
 		if (!records) return [];
 		return records.filter((r) => {
-			if (typeFilter !== "all" && r.type !== typeFilter) return false;
+			// Only tax expense rows are shown/creatable now (income and declaration
+			// records were split out); hide any legacy non-expense rows.
+			if (r.type !== "expense") return false;
 			if (configFilter !== "all" && r.taxConfigId !== configFilter)
 				return false;
 			if (
@@ -60,12 +53,12 @@ export function TaxClient() {
 			}
 			return true;
 		});
-	}, [records, typeFilter, configFilter, search]);
+	}, [records, configFilter, search]);
 
 	// Reset to first page when filters or page size change.
 	useEffect(() => {
 		setPage(0);
-	}, [typeFilter, configFilter, search, pageSize]);
+	}, [configFilter, search, pageSize]);
 
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const clampedPage = Math.min(page, totalPages - 1);
@@ -142,7 +135,7 @@ export function TaxClient() {
 			<div className="flex flex-col gap-1">
 				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Taxes</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Track expenses and declaration status per tax type.
+					Track tax expenses per tax type.
 				</p>
 			</div>
 			<div className="flex justify-end">
@@ -153,27 +146,6 @@ export function TaxClient() {
 
 			<Card>
 				<CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
-					<div className="space-y-2">
-						<Label>Type</Label>
-						<Select
-							value={typeFilter}
-							onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}
-						>
-							<SelectTrigger className="w-full sm:w-48">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="all">All</SelectItem>
-								<SelectItem value="expense">Expense</SelectItem>
-								<SelectItem value="declaration_sent">
-									Declaration Sent
-								</SelectItem>
-								<SelectItem value="declaration_todo">
-									Declaration To Do
-								</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
 					<div className="space-y-2">
 						<Label htmlFor="tax-config-filter">Tax Type</Label>
 						<TaxConfigFilterSelect
@@ -228,7 +200,6 @@ export function TaxClient() {
 									/>
 								</th>
 								<th className="pb-2">Date</th>
-								<th className="pb-2">Type</th>
 								<th className="pb-2">Tax</th>
 								<th className="pb-2 text-right">Amount</th>
 								<th className="pb-2 pl-6">Description</th>
@@ -239,7 +210,7 @@ export function TaxClient() {
 							{filtered.length === 0 && (
 								<tr>
 									<td
-										colSpan={7}
+										colSpan={6}
 										className="py-6 text-center text-muted-foreground"
 									>
 										No records. Use the Create button above.
@@ -256,7 +227,6 @@ export function TaxClient() {
 										/>
 									</td>
 									<td className="py-2">{r.date.slice(0, 7)}</td>
-									<td className="py-2">{TYPE_LABEL[r.type]}</td>
 									<td className="py-2">{r.taxConfigName ?? "—"}</td>
 									<td className="py-2 text-right tabular-nums">
 										{r.amount != null
@@ -325,9 +295,6 @@ export function TaxClient() {
 										/>
 										<span className="text-sm font-semibold">
 											{r.date.slice(0, 7)}
-										</span>
-										<span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-											{TYPE_LABEL[r.type]}
 										</span>
 									</div>
 									<p className="mt-1 text-sm text-muted-foreground">

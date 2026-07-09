@@ -25,11 +25,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiPatch, apiPost, fetcher } from "@/lib/api-client";
 import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 
-type RecordType = "expense" | "declaration_sent" | "declaration_todo";
-
 export type TaxRecord = {
 	id: string;
-	type: RecordType;
+	type: "expense";
 	taxConfigId: string | null;
 	taxConfigName: string | null;
 	currency: string | null;
@@ -87,7 +85,6 @@ export function CreateTaxRecordDialog({
 			const r = mode.record;
 			const d = new Date(r.date);
 			return {
-				type: r.type,
 				taxConfigId: r.taxConfigId ?? "",
 				month: String(d.getUTCMonth() + 1),
 				year: String(d.getUTCFullYear()),
@@ -97,7 +94,6 @@ export function CreateTaxRecordDialog({
 			};
 		}
 		return {
-			type: "expense" as RecordType,
 			taxConfigId: "",
 			month: String(today.getMonth() + 1),
 			year: String(today.getFullYear()),
@@ -108,7 +104,6 @@ export function CreateTaxRecordDialog({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [mode]);
 
-	const [type, setType] = useState<RecordType>(initial.type);
 	const [taxConfigId, setTaxConfigId] = useState<string>(initial.taxConfigId);
 	const [month, setMonth] = useState<string>(initial.month);
 	const [year, setYear] = useState<string>(initial.year);
@@ -123,7 +118,6 @@ export function CreateTaxRecordDialog({
 	// Re-sync local form state whenever the dialog opens in a new mode (create vs edit)
 	useEffect(() => {
 		if (!open) return;
-		setType(initial.type);
 		setTaxConfigId(initial.taxConfigId);
 		setMonth(initial.month);
 		setYear(initial.year);
@@ -138,8 +132,6 @@ export function CreateTaxRecordDialog({
 			setCurrency(cfg?.currency ?? "USD");
 		}
 	}, [open, initial, configs, mode]);
-
-	const showAmount = type === "expense";
 
 	const selectedConfig = configs?.find((c) => c.id === taxConfigId);
 	const configHasRate = (selectedConfig?.rate ?? 0) > 0;
@@ -182,7 +174,6 @@ export function CreateTaxRecordDialog({
 	// Don't overwrite if the user already typed something for the current selection.
 	useEffect(() => {
 		if (mode.kind !== "create") return;
-		if (!showAmount) return;
 		if (userTouchedAmount) return;
 		if (!selectedConfig) return;
 
@@ -202,15 +193,12 @@ export function CreateTaxRecordDialog({
 
 		setCurrency(selectedConfig.currency || "USD");
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [taxConfigId, effectiveBaseRecordId, type, mode.kind]);
+	}, [taxConfigId, effectiveBaseRecordId, mode.kind]);
 
 	function onConfigChange(v: string) {
 		setTaxConfigId(v);
 		setBaseRecordId("");
 		setUserTouchedAmount(false);
-		// A tax config only makes sense on an expense record: force and lock the
-		// type while one is selected (unlocked again when set back to none).
-		if (v !== "") setType("expense");
 		// Prefill the currency selector from the chosen tax config.
 		const cfg = configs?.find((c) => c.id === v);
 		if (cfg?.currency) setCurrency(cfg.currency);
@@ -224,11 +212,11 @@ export function CreateTaxRecordDialog({
 	async function submit(e: React.FormEvent) {
 		e.preventDefault();
 		const body = {
-			type,
+			type: "expense" as const,
 			taxConfigId: taxConfigId || null,
 			month: Number(month),
 			year: Number(year),
-			amount: showAmount && amount !== "" ? Number(amount) : null,
+			amount: amount !== "" ? Number(amount) : null,
 			currency,
 			description: description || null,
 		};
@@ -269,32 +257,10 @@ export function CreateTaxRecordDialog({
 					<DialogDescription>
 						{mode.kind === "edit"
 							? "Update this tax record."
-							: "Expense or declaration entry."}
+							: "Tax expense entry."}
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={submit} className="space-y-4">
-					<div className="space-y-2">
-						<Label>Type</Label>
-						<Select
-							value={type}
-							onValueChange={(v) => setType(v as RecordType)}
-							disabled={taxConfigId !== ""}
-						>
-							<SelectTrigger>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="expense">Expense</SelectItem>
-								<SelectItem value="declaration_sent">
-									Declaration Sent
-								</SelectItem>
-								<SelectItem value="declaration_todo">
-									Declaration To Do
-								</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
-
 					<div className="space-y-2">
 						<Label>Tax Type</Label>
 						<Select value={taxConfigId} onValueChange={onConfigChange}>
@@ -349,9 +315,8 @@ export function CreateTaxRecordDialog({
 						</div>
 					</div>
 
-					{showAmount && (
-						<>
-							{mode.kind === "create" && configHasRate && (
+					<>
+						{mode.kind === "create" && configHasRate && (
 								<div className="space-y-2">
 									<Label>Base income record</Label>
 									<Select
@@ -449,8 +414,7 @@ export function CreateTaxRecordDialog({
 									</Select>
 								</div>
 							</div>
-						</>
-					)}
+					</>
 
 					<div className="space-y-2">
 						<Label htmlFor="rec-desc">Description (optional)</Label>
