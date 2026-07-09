@@ -18,7 +18,6 @@ export const taxConfigSchema = z.object({
 export type TaxConfigInput = z.infer<typeof taxConfigSchema>;
 
 export const taxRecordType = z.enum([
-	"income",
 	"expense",
 	"declaration_sent",
 	"declaration_todo",

@@ -26,6 +26,7 @@ model User {
   subscriptions Subscription[]
   taxConfigs   TaxConfig[]
   taxRecords   TaxRecord[]
+  incomes      Income[]
   expenses     Expense[]
   budgets      Budget[]
   financialAccounts FinancialAccount[]
@@ -192,6 +193,7 @@ model TaxConfig {
   updatedAt    DateTime   @updatedAt
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   records      TaxRecord[]
+  incomes      Income[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -213,6 +215,26 @@ model TaxRecord {
 
   @@index([userId])
   @@index([type])
+  @@index([date])
+}
+
+// Income entries, split out of TaxRecord (which now only holds expense and
+// declaration rows). An income row may reference a TaxConfig — this scopes it to
+// a tax type and lets the tax-record form pre-fill a rate-based amount off it.
+model Income {
+  id          String     @id @default(cuid())
+  userId      String
+  taxConfigId String?
+  date        DateTime
+  amount      Decimal?   @db.Decimal(10, 2)
+  currency    String     @default("USD")
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taxConfig   TaxConfig? @relation(fields: [taxConfigId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
   @@index([date])
 }
 
@@ -279,8 +301,8 @@ model Goal {
 
 // A recurring income or expense. Generalizes subscription auto-posting: when
 // `autoPost` is on, each due charge is posted (expense → Expense, income →
-// TaxRecord of type "income"). `lastPostedAt` keeps posting idempotent;
-// `endDate` optionally stops the recurrence.
+// Income). `lastPostedAt` keeps posting idempotent; `endDate` optionally stops
+// the recurrence.
 model RecurringTransaction {
   id           String    @id @default(cuid())
   userId       String

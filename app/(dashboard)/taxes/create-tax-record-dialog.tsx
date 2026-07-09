@@ -25,15 +25,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiPatch, apiPost, fetcher } from "@/lib/api-client";
 import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 
-type RecordType =
-	| "income"
-	| "expense"
-	| "declaration_sent"
-	| "declaration_todo";
+type RecordType = "expense" | "declaration_sent" | "declaration_todo";
 
 export type TaxRecord = {
 	id: string;
 	type: RecordType;
+	taxConfigId: string | null;
+	taxConfigName: string | null;
+	currency: string | null;
+	date: string;
+	amount: number | null;
+	description: string | null;
+	createdAt: string;
+};
+
+// Income rows live in their own resource now; the tax form only reads them to
+// pre-fill a rate-based expense amount off a chosen base income record.
+type Income = {
+	id: string;
 	taxConfigId: string | null;
 	taxConfigName: string | null;
 	currency: string | null;
@@ -67,8 +76,8 @@ export function CreateTaxRecordDialog({
 	onModeChange: (m: Mode) => void;
 }) {
 	const { data: configs } = useSWR<Config[]>("/api/tax-configs", fetcher);
-	const { data: allRecords } = useSWR<TaxRecord[]>(
-		open ? "/api/tax-records" : null,
+	const { data: allIncome } = useSWR<Income[]>(
+		open ? "/api/income" : null,
 		fetcher,
 	);
 
@@ -88,7 +97,7 @@ export function CreateTaxRecordDialog({
 			};
 		}
 		return {
-			type: "income" as RecordType,
+			type: "expense" as RecordType,
 			taxConfigId: "",
 			month: String(today.getMonth() + 1),
 			year: String(today.getFullYear()),
@@ -130,16 +139,13 @@ export function CreateTaxRecordDialog({
 		}
 	}, [open, initial, configs, mode]);
 
-	const showAmount = type === "income" || type === "expense";
+	const showAmount = type === "expense";
 
 	const selectedConfig = configs?.find((c) => c.id === taxConfigId);
 	const configHasRate = (selectedConfig?.rate ?? 0) > 0;
 
 	// All income records (used to populate the base-record picker)
-	const incomeRecords = useMemo(
-		() => (allRecords ?? []).filter((r) => r.type === "income"),
-		[allRecords],
-	);
+	const incomeRecords = useMemo(() => allIncome ?? [], [allIncome]);
 
 	// Income records scoped to the selected tax config (preferred pre-fill source)
 	const scopedIncome = useMemo(
@@ -149,8 +155,8 @@ export function CreateTaxRecordDialog({
 
 	// Candidate "base" income record: prefer explicit pick, else scoped+latest, else any+latest
 	const defaultBaseRecord = useMemo(() => {
-		if (!allRecords) return null;
-		const sorted = (xs: TaxRecord[]) =>
+		if (!allIncome) return null;
+		const sorted = (xs: Income[]) =>
 			[...xs].sort(
 				(a, b) =>
 					(b.date > a.date ? 1 : b.date < a.date ? -1 : 0) ||
@@ -159,7 +165,7 @@ export function CreateTaxRecordDialog({
 		if (scopedIncome.length > 0) return sorted(scopedIncome)[0];
 		if (incomeRecords.length > 0) return sorted(incomeRecords)[0];
 		return null;
-	}, [allRecords, scopedIncome, incomeRecords]);
+	}, [allIncome, scopedIncome, incomeRecords]);
 
 	const effectiveBaseRecordId = baseRecordId || defaultBaseRecord?.id || "";
 	const baseRecord = useMemo(
@@ -263,7 +269,7 @@ export function CreateTaxRecordDialog({
 					<DialogDescription>
 						{mode.kind === "edit"
 							? "Update this tax record."
-							: "Income, expense, or declaration entry."}
+							: "Expense or declaration entry."}
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={submit} className="space-y-4">
@@ -278,7 +284,6 @@ export function CreateTaxRecordDialog({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="income">Income</SelectItem>
 								<SelectItem value="expense">Expense</SelectItem>
 								<SelectItem value="declaration_sent">
 									Declaration Sent

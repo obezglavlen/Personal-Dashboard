@@ -289,9 +289,57 @@ export function buildTools(userId: string) {
 			},
 		}),
 
+		getIncome: tool({
+			description:
+				"List the user's income entries, optionally filtered by date range. Totals grouped by currency.",
+			inputSchema: z.object({
+				from: dateString,
+				to: dateString,
+				limit: z.number().int().optional(),
+			}),
+			execute: async ({ from, to, limit }) => {
+				const rows = await prisma.income.findMany({
+					where: {
+						userId,
+						...(from || to
+							? {
+									date: {
+										...(from ? { gte: new Date(from) } : {}),
+										...(to ? { lte: new Date(to) } : {}),
+									},
+								}
+							: {}),
+					},
+					orderBy: { date: "desc" },
+					take: clampLimit(limit),
+					select: {
+						amount: true,
+						currency: true,
+						date: true,
+						description: true,
+					},
+				});
+				const records = rows.map((r) => ({
+					amount: r.amount === null ? null : Number(r.amount),
+					currency: r.currency,
+					date: r.date.toISOString().slice(0, 10),
+					description: r.description,
+				}));
+				return {
+					count: records.length,
+					totalsByCurrency: sumByCurrency(
+						records
+							.filter((r) => r.amount !== null)
+							.map((r) => ({ amount: r.amount as number, currency: r.currency })),
+					),
+					records,
+				};
+			},
+		}),
+
 		getTaxRecords: tool({
 			description:
-				"List the user's tax records (income/payments), optionally filtered by date range or type. Totals grouped by currency.",
+				"List the user's tax records (expenses and declaration status), optionally filtered by date range or type. Totals grouped by currency.",
 			inputSchema: z.object({
 				from: dateString,
 				to: dateString,

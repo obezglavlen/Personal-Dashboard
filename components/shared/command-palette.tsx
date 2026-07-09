@@ -21,6 +21,11 @@ type TaxRecord = {
 	description: string | null;
 	taxConfigName: string | null;
 };
+type Income = {
+	id: string;
+	description: string | null;
+	taxConfigName: string | null;
+};
 type Recurring = {
 	id: string;
 	name: string;
@@ -78,6 +83,10 @@ export function CommandPalette({
 	);
 	const { data: taxRecords } = useSWR<TaxRecord[]>(
 		open ? "/api/tax-records" : null,
+		fetcher,
+	);
+	const { data: income } = useSWR<Income[]>(
+		open ? "/api/income" : null,
 		fetcher,
 	);
 	const { data: recurring } = useSWR<Recurring[]>(
@@ -152,6 +161,9 @@ export function CommandPalette({
 			for (const r of matchAndRank(query, taxRecords ?? [], (x) => `${x.description ?? ""} ${x.type} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
 				out.push({ key: `tax:${r.id}`, group: "Tax records", label: r.description || r.type.replace("_", " "), sub: r.taxConfigName ?? r.type.replace("_", " "), onSelect: goTo("/taxes") });
 			}
+			for (const r of matchAndRank(query, income ?? [], (x) => `${x.description ?? ""} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
+				out.push({ key: `income:${r.id}`, group: "Income", label: r.description || "Income", sub: r.taxConfigName ?? undefined, onSelect: goTo("/income") });
+			}
 			for (const r of matchAndRank(query, recurring ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
 				out.push({ key: `rec:${r.id}`, group: "Recurring", label: r.name, sub: `${r.type}${r.tags.length ? ` · ${r.tags.join(", ")}` : ""}`, onSelect: goTo("/recurring") });
 			}
@@ -170,6 +182,7 @@ export function CommandPalette({
 		goals,
 		accounts,
 		taxRecords,
+		income,
 		recurring,
 	]);
 

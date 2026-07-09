@@ -9,6 +9,7 @@ import { expenseSchema } from "@/lib/validations/expense";
 import { noteSchema } from "@/lib/validations/note";
 import { subscriptionSchema } from "@/lib/validations/subscription";
 import { taskSchema } from "@/lib/validations/task";
+import { incomeSchema } from "@/lib/validations/income";
 import { taxConfigSchema, taxRecordSchema } from "@/lib/validations/tax";
 import { EXPORT_VERSION } from "../export/route";
 
@@ -136,10 +137,38 @@ async function handler(req: Request): Promise<Response> {
 		},
 	) as Array<Json & { taxConfigId?: string | null }>;
 
+	const income = build(
+		"income",
+		{
+			safeParse: (v: unknown) => {
+				const r = (v ?? {}) as Json;
+				const d = toDate(r.date);
+				return incomeSchema.safeParse({
+					...r,
+					month: d.getUTCMonth() + 1,
+					year: d.getUTCFullYear(),
+				});
+			},
+		},
+		(i) => {
+			const { month, year, ...rest } = i as {
+				month: number;
+				year: number;
+				taxConfigId?: string | null;
+			};
+			return {
+				...rest,
+				date: new Date(Date.UTC(year, month - 1, 1)),
+				userId,
+			};
+		},
+	) as Array<Json & { taxConfigId?: string | null }>;
+
 	await prisma.$transaction(async (tx: Tx) => {
 		if (replace) {
 			// Delete in FK-safe order (records reference configs).
 			await tx.taxRecord.deleteMany({ where: { userId } });
+			await tx.income.deleteMany({ where: { userId } });
 			await tx.taxConfig.deleteMany({ where: { userId } });
 			await tx.expense.deleteMany({ where: { userId } });
 			await tx.subscription.deleteMany({ where: { userId } });
@@ -186,15 +215,19 @@ async function handler(req: Request): Promise<Response> {
 		}
 		imported.taxConfigs = configCount;
 
-		const recordRows = taxRecords.map((r) => {
+		const remapConfig = <T extends Json & { taxConfigId?: string | null }>(
+			r: T,
+		) => {
 			const { taxConfigId, ...rest } = r;
 			const mapped =
 				taxConfigId && configIdMap.has(taxConfigId)
 					? configIdMap.get(taxConfigId)
 					: null;
 			return { ...rest, taxConfigId: mapped };
-		});
-		await createMany(tx.taxRecord, recordRows, "taxRecords");
+		};
+
+		await createMany(tx.taxRecord, taxRecords.map(remapConfig), "taxRecords");
+		await createMany(tx.income, income.map(remapConfig), "income");
 	});
 
 	return NextResponse.json({ imported, skipped });

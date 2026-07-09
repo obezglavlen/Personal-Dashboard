@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { route } from "@/lib/api/handler";
 import {
 	serializeExpense,
+	serializeIncome,
 	serializeSubscription,
 	serializeTaxConfig,
 	serializeTaxRecord,
@@ -26,6 +27,7 @@ async function collect(userId: string) {
 		subscriptions,
 		taxConfigs,
 		taxRecords,
+		income,
 		expenses,
 	] = await Promise.all([
 		prisma.bookmark.findMany({ where: { userId } }),
@@ -34,6 +36,10 @@ async function collect(userId: string) {
 		prisma.subscription.findMany({ where: { userId } }),
 		prisma.taxConfig.findMany({ where: { userId } }),
 		prisma.taxRecord.findMany({
+			where: { userId },
+			include: { taxConfig: true },
+		}),
+		prisma.income.findMany({
 			where: { userId },
 			include: { taxConfig: true },
 		}),
@@ -47,6 +53,7 @@ async function collect(userId: string) {
 		subscriptions: subscriptions.map(serializeSubscription),
 		taxConfigs: taxConfigs.map(serializeTaxConfig),
 		taxRecords: taxRecords.map(serializeTaxRecord),
+		income: income.map(serializeIncome),
 		expenses: expenses.map(serializeExpense),
 	} as Record<string, Array<Record<string, unknown>>>;
 }

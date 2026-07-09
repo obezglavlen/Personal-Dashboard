@@ -5,7 +5,7 @@ import { autoPostDueDates, type Period } from "@/lib/recurring-dates";
  * Post rows for any recurring transactions that have come due since they were
  * last posted. Mirrors {@link import("./post-renewals").postDueRenewals}:
  * idempotent via `lastPostedAt`, batched in a `$transaction`. Expenses post to
- * `Expense`; income posts to `TaxRecord` (type "income"). Honours `endDate`.
+ * `Expense`; income posts to `Income`. Honours `endDate`.
  *
  * A recurrence with `lastPostedAt = null` (auto-post just enabled, or freshly
  * created) backfills every charge from `startDate` through today, so the charge
@@ -50,10 +50,9 @@ export async function postDueRecurring(
 			]);
 		} else {
 			await prisma.$transaction([
-				prisma.taxRecord.createMany({
+				prisma.income.createMany({
 					data: due.map((d) => ({
 						userId: r.userId,
-						type: "income",
 						amount: r.amount,
 						currency: r.currency,
 						date: d,

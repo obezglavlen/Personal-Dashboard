@@ -34,7 +34,14 @@ import type { Subscription } from "../subscriptions/subscription-client";
 
 type TaxRecord = {
 	id: string;
-	type: "income" | "expense" | "declaration_sent" | "declaration_todo";
+	type: "expense" | "declaration_sent" | "declaration_todo";
+	date: string;
+	amount: number | null;
+	currency: string | null;
+};
+
+type Income = {
+	id: string;
 	date: string;
 	amount: number | null;
 	currency: string | null;
@@ -72,6 +79,7 @@ function perMonth(s: Subscription): number {
 
 export function ReportsClient() {
 	const { items: records } = useResource<TaxRecord>("/api/tax-records");
+	const { items: incomeItems } = useResource<Income>("/api/income");
 	const { items: expenses } = useResource<Expense>("/api/expenses");
 	const { items: subs } = useResource<Subscription>("/api/subscriptions");
 	const { currency } = useCurrency();
@@ -117,10 +125,12 @@ export function ReportsClient() {
 	const summary = useMemo(() => {
 		let income = 0;
 		let expense = 0;
+		for (const r of incomeItems) {
+			if (r.amount == null || !isInRange(r.date, range)) continue;
+			income += toBase(r.amount, r.currency ?? currency, r.date);
+		}
 		for (const r of records) {
 			if (r.amount == null || !isInRange(r.date, range)) continue;
-			if (r.type === "income")
-				income += toBase(r.amount, r.currency ?? currency, r.date);
 			if (r.type === "expense")
 				expense += toBase(r.amount, r.currency ?? currency, r.date);
 		}
@@ -130,7 +140,7 @@ export function ReportsClient() {
 			}
 		}
 		return { income, expense, net: income - expense };
-	}, [records, expenses, toBase, currency, range]);
+	}, [records, incomeItems, expenses, toBase, currency, range]);
 
 	// Expense total over the range, grouped by first tag (primary category).
 	const byCategory = useMemo(() => {

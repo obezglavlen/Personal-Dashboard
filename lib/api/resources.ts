@@ -5,6 +5,7 @@ import { budgetSchema } from "@/lib/validations/budget";
 import { calendarEventSchema } from "@/lib/validations/calendar";
 import { expenseSchema } from "@/lib/validations/expense";
 import { goalSchema } from "@/lib/validations/goal";
+import { incomeSchema } from "@/lib/validations/income";
 import { noteSchema } from "@/lib/validations/note";
 import { recurringSchema } from "@/lib/validations/recurring";
 import { subscriptionSchema } from "@/lib/validations/subscription";
@@ -69,6 +70,19 @@ export const serializeTaxRecord = (r: Row) => ({
 	id: r.id,
 	userId: r.userId,
 	type: r.type,
+	taxConfigId: r.taxConfigId,
+	taxConfigName: r.taxConfig?.name ?? null,
+	currency: r.currency,
+	date: iso(r.date),
+	amount: numOrNull(r.amount),
+	description: r.description,
+	createdAt: iso(r.createdAt),
+	updatedAt: iso(r.updatedAt),
+});
+
+export const serializeIncome = (r: Row) => ({
+	id: r.id,
+	userId: r.userId,
 	taxConfigId: r.taxConfigId,
 	taxConfigName: r.taxConfig?.name ?? null,
 	currency: r.currency,
@@ -151,6 +165,27 @@ export const taxRecordHandlers = crudHandlers({
 	orderBy: [{ date: "desc" }, { createdAt: "desc" }],
 	include: { taxConfig: true },
 	serialize: serializeTaxRecord,
+	toCreateData: ({ month, year, ...rest }, userId) => ({
+		...rest,
+		date: new Date(Date.UTC(year, month - 1, 1)),
+		userId,
+	}),
+	toUpdateData: ({ month, year, ...rest }) => ({
+		...rest,
+		...(month !== undefined &&
+			year !== undefined && {
+				date: new Date(Date.UTC(year, month - 1, 1)),
+			}),
+	}),
+});
+
+export const incomeHandlers = crudHandlers({
+	delegate: prisma.income,
+	createSchema: incomeSchema,
+	updateSchema: incomeSchema.partial(),
+	orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+	include: { taxConfig: true },
+	serialize: serializeIncome,
 	toCreateData: ({ month, year, ...rest }, userId) => ({
 		...rest,
 		date: new Date(Date.UTC(year, month - 1, 1)),
