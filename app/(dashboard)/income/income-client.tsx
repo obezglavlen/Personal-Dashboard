@@ -16,19 +16,16 @@ import {
 } from "@/components/ui/select";
 import { formatMoney } from "@/lib/format";
 import { useResource } from "@/lib/hooks/use-resource";
-import {
-	CreateTaxRecordDialog,
-	type TaxRecord,
-} from "./create-tax-record-dialog";
+import { CreateIncomeDialog, type Income } from "./create-income-dialog";
 
-type Mode = { kind: "create" } | { kind: "edit"; record: TaxRecord };
+type Mode = { kind: "create" } | { kind: "edit"; record: Income };
 
-export function TaxClient() {
+export function IncomeClient() {
 	const {
 		items: records,
 		mutate,
 		remove: removeRecord,
-	} = useResource<TaxRecord>("/api/tax-records");
+	} = useResource<Income>("/api/income");
 	const [configFilter, setConfigFilter] = useState<string>("all");
 	const [search, setSearch] = useState("");
 	const [open, setOpen] = useState(false);
@@ -112,7 +109,7 @@ export function TaxClient() {
 			await removeRecord(id);
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to delete record",
+				err instanceof Error ? err.message : "Failed to delete income",
 			);
 		}
 	}
@@ -122,7 +119,7 @@ export function TaxClient() {
 		setOpen(true);
 	}
 
-	function openEdit(r: TaxRecord) {
+	function openEdit(r: Income) {
 		setMode({ kind: "edit", record: r });
 		setOpen(true);
 	}
@@ -130,9 +127,9 @@ export function TaxClient() {
 	return (
 		<div className="space-y-4 sm:space-y-6">
 			<div className="flex flex-col gap-1">
-				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Taxes</h1>
+				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Income</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Track tax expenses per tax type.
+					Track income per month, optionally scoped to a tax type.
 				</p>
 			</div>
 			<div className="flex justify-end">
@@ -144,16 +141,16 @@ export function TaxClient() {
 			<Card>
 				<CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
 					<div className="space-y-2">
-						<Label htmlFor="tax-config-filter">Tax Type</Label>
+						<Label htmlFor="income-config-filter">Tax Type</Label>
 						<TaxConfigFilterSelect
 							value={configFilter}
 							onChange={setConfigFilter}
 						/>
 					</div>
 					<div className="space-y-2 sm:flex-1 sm:min-w-48">
-						<Label htmlFor="tax-search">Search</Label>
+						<Label htmlFor="income-search">Search</Label>
 						<Input
-							id="tax-search"
+							id="income-search"
 							placeholder="Description…"
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
@@ -210,7 +207,7 @@ export function TaxClient() {
 										colSpan={6}
 										className="py-6 text-center text-muted-foreground"
 									>
-										No records. Use the Create button above.
+										No income. Use the Create button above.
 									</td>
 								</tr>
 							)}
@@ -275,7 +272,7 @@ export function TaxClient() {
 				{filtered.length === 0 && (
 					<Card>
 						<CardContent className="py-8 text-center text-sm text-muted-foreground">
-							No records. Use the Create button above.
+							No income. Use the Create button above.
 						</CardContent>
 					</Card>
 				)}
@@ -344,7 +341,7 @@ export function TaxClient() {
 				)}
 			</div>
 
-			<CreateTaxRecordDialog
+			<CreateIncomeDialog
 				open={open}
 				onOpenChange={setOpen}
 				onSaved={mutate}
@@ -367,7 +364,7 @@ function TaxConfigFilterSelect({
 	);
 	return (
 		<Select value={value} onValueChange={onChange}>
-			<SelectTrigger id="tax-config-filter" className="w-full sm:w-48">
+			<SelectTrigger id="income-config-filter" className="w-full sm:w-48">
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>

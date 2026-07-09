@@ -3,6 +3,7 @@ import {
 	Bookmark,
 	Calculator,
 	CheckSquare,
+	Coins,
 	FileText,
 	Receipt,
 	StickyNote,
@@ -59,6 +60,7 @@ export default async function DashboardPage() {
 				subscriptionCount,
 				taxConfigCount,
 				taxRecordCount,
+				incomeCount,
 				settings,
 			] = await Promise.all([
 				prisma.bookmark.count({ where: { userId: uid } }),
@@ -68,6 +70,7 @@ export default async function DashboardPage() {
 				prisma.subscription.count({ where: { userId: uid } }),
 				prisma.taxConfig.count({ where: { userId: uid } }),
 				prisma.taxRecord.count({ where: { userId: uid } }),
+				prisma.income.count({ where: { userId: uid } }),
 				prisma.userSettings.findUnique({ where: { userId: uid } }),
 			]);
 			const recentBookmarks = await prisma.bookmark.findMany({
@@ -90,6 +93,7 @@ export default async function DashboardPage() {
 				subscriptionCount,
 				taxConfigCount,
 				taxRecordCount,
+				incomeCount,
 				dashboardLayout: settings?.dashboardLayout ?? null,
 				recentBookmarks,
 				recentTasks,
@@ -107,6 +111,7 @@ export default async function DashboardPage() {
 		subscriptionCount,
 		taxConfigCount,
 		taxRecordCount,
+		incomeCount,
 		dashboardLayout,
 		recentBookmarks,
 		recentTasks,
@@ -146,6 +151,12 @@ export default async function DashboardPage() {
 					value={subscriptionCount}
 					icon={Receipt}
 					description="Tracked recurring"
+				/>
+				<StatCard
+					title="Income"
+					value={incomeCount}
+					icon={Coins}
+					description="Entries"
 				/>
 				<StatCard
 					title="Tax Types"

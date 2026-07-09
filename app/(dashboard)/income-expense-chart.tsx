@@ -30,7 +30,13 @@ import type { Period } from "@/lib/recurring-dates";
 
 type TaxRecord = {
 	id: string;
-	type: "income" | "expense" | "declaration_sent" | "declaration_todo";
+	date: string;
+	amount: number | null;
+	currency: string | null;
+};
+
+type Income = {
+	id: string;
 	date: string;
 	amount: number | null;
 	currency: string | null;
@@ -89,6 +95,7 @@ const PERIODS: { label: string; unit: "day" | "month"; count: number }[] = [
 
 export function IncomeExpenseChart() {
 	const { items: records } = useResource<TaxRecord>("/api/tax-records");
+	const { items: income } = useResource<Income>("/api/income");
 	const { items: expenses } = useResource<Expense>("/api/expenses");
 	const { items: subs } = useResource<Subscription>("/api/subscriptions");
 	const { items: recurring } = useResource<Recurring>("/api/recurring");
@@ -100,12 +107,12 @@ export function IncomeExpenseChart() {
 	const [tagFilter, setTagFilter] = useState<string[]>([]);
 
 	// Distinct tags across expenses, for the search-bar autocomplete. Tax
-	// records of type "expense" have no tags of their own, so they carry an
-	// implicit TAX_TAG ("taxes") that participates in filtering like any other.
+	// records have no tags of their own, so they carry an implicit TAX_TAG
+	// ("taxes") that participates in filtering like any other.
 	const catalog = useAllTags();
 	const allTags = useMemo(() => {
 		const set = new Set(catalog);
-		if ((records ?? []).some((r) => r.type === "expense" && r.amount != null)) {
+		if ((records ?? []).some((r) => r.amount != null)) {
 			set.add(TAX_TAG);
 		}
 		return [...set].sort((a, b) => a.localeCompare(b));
@@ -140,18 +147,23 @@ export function IncomeExpenseChart() {
 		const toBase = (amount: number, from: string, iso: string) =>
 			convertToBase(amount, from, currency, ratesForDate(iso));
 
-		// Tax records: income is never tag-filtered; expense carries the implicit
-		// TAX_TAG so a tag filter only counts it when "taxes" is selected.
-		for (const r of records ?? []) {
+		// Income is never tag-filtered.
+		for (const r of income ?? []) {
 			if (r.amount == null) continue;
-			if (r.type !== "income" && r.type !== "expense") continue;
-			if (r.type === "expense" && selected.size > 0 && !selected.has(TAX_TAG)) {
-				continue;
-			}
 			const slot = index.get(bucketKey(new Date(r.date), byDay));
 			if (slot == null) continue;
 			// Non-forecast buckets always start numeric, never null.
-			buckets[slot][r.type]! += toBase(r.amount, r.currency ?? currency, r.date);
+			buckets[slot].income! += toBase(r.amount, r.currency ?? currency, r.date);
+		}
+
+		// Tax expense records carry the implicit TAX_TAG so a tag filter only
+		// counts them when "taxes" is selected.
+		for (const r of records ?? []) {
+			if (r.amount == null) continue;
+			if (selected.size > 0 && !selected.has(TAX_TAG)) continue;
+			const slot = index.get(bucketKey(new Date(r.date), byDay));
+			if (slot == null) continue;
+			buckets[slot].expense! += toBase(r.amount, r.currency ?? currency, r.date);
 		}
 
 		// Standalone expenses, filtered by selected tags (any-match; none ⇒ all).
@@ -176,7 +188,7 @@ export function IncomeExpenseChart() {
 		);
 		let taxSum = 0;
 		for (const r of records ?? []) {
-			if (r.type !== "expense" || r.amount == null) continue;
+			if (r.amount == null) continue;
 			const d = new Date(r.date);
 			if (d < taxFrom || d > now) continue;
 			taxSum += toBase(r.amount, r.currency ?? currency, r.date);
@@ -213,7 +225,7 @@ export function IncomeExpenseChart() {
 		}
 
 		return buckets;
-	}, [records, expenses, subs, recurring, period, tagFilter, currency, ratesForDate]);
+	}, [records, income, expenses, subs, recurring, period, tagFilter, currency, ratesForDate]);
 
 	return (
 		<Card>

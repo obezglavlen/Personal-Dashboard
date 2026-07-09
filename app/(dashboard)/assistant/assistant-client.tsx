@@ -19,6 +19,7 @@ const TOOL_LABELS: Record<string, string> = {
 	getTasks: "tasks",
 	getNetWorth: "net worth",
 	getGoals: "goals",
+	getIncome: "income",
 	getTaxRecords: "tax records",
 	getNotes: "notes",
 	getBookmarks: "bookmarks",

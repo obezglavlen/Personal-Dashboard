@@ -20,6 +20,7 @@ import {
   Landmark,
   MessageSquare,
   Repeat,
+  Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ export const navItems = [
   { href: "/budgets", label: "Budgets", icon: PiggyBank },
   { href: "/net-worth", label: "Net Worth", icon: Landmark },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/income", label: "Income", icon: Coins },
   { href: "/taxes", label: "Taxes", icon: Calculator },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/settings", label: "Settings", icon: Settings },
