@@ -10,6 +10,8 @@ function base(overrides: Partial<DigestData> = {}): DigestData {
 		expenses: [],
 		tasks: [],
 		events: [],
+		income: [],
+		netExpenses: [],
 		displayCurrency: "USD",
 		rates: {},
 		prefs: {
@@ -17,6 +19,7 @@ function base(overrides: Partial<DigestData> = {}): DigestData {
 			budgets: true,
 			tasks: true,
 			events: true,
+			totalNet: true,
 			budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
 		},
 		...overrides,
@@ -64,6 +67,7 @@ describe("buildDigest", () => {
 					budgets: false,
 					tasks: true,
 					events: true,
+					totalNet: true,
 					budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
 				},
 			},
@@ -139,6 +143,50 @@ describe("buildDigest", () => {
 			now,
 		);
 		expect(off).toBeNull();
+	});
+
+	it("reports total-net change vs yesterday and last month", () => {
+		const data = base({
+			income: [
+				{ date: "2026-06-15", amount: 100, currency: "USD" }, // today
+				{ date: "2026-05-01", amount: 200, currency: "USD" }, // prior
+			],
+			netExpenses: [
+				{ date: "2026-06-15", amount: 30, currency: "USD" }, // today
+				{ date: "2026-05-10", amount: 50, currency: "USD" }, // prior
+			],
+		});
+		const msg = buildDigest(data, now);
+		expect(msg).toContain("Total net");
+		// Current net = (100+200) − (30+50) = 220.
+		expect(msg).toContain("Now: $220.00");
+		// Prior (through 06-14 / 05-15) = 200 − 50 = 150; change = +70 → +46.7%.
+		expect(msg).toContain("vs yesterday: +$70.00 (+46.7%)");
+		expect(msg).toContain("vs last month: +$70.00 (+46.7%)");
+	});
+
+	it("omits the total-net section when the pref is off", () => {
+		const data = base({
+			income: [{ date: "2026-06-15", amount: 100, currency: "USD" }],
+			prefs: {
+				renewals: true,
+				budgets: true,
+				tasks: true,
+				events: true,
+				totalNet: false,
+				budgetThreshold: DEFAULT_BUDGET_THRESHOLD,
+			},
+		});
+		expect(buildDigest(data, now)).toBeNull();
+	});
+
+	it("shows an em dash for percent when the prior net is zero", () => {
+		const msg = buildDigest(
+			base({ income: [{ date: "2026-06-15", amount: 100, currency: "USD" }] }),
+			now,
+		);
+		// No activity before today → prior 0 → percent undefined.
+		expect(msg).toContain("vs yesterday: +$100.00 (—)");
 	});
 
 	it("escapes HTML in user-provided names", () => {

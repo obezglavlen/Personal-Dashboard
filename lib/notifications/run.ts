@@ -36,23 +36,36 @@ export async function sendDailyDigests(
 		try {
 			const displayCurrency = s.currency || "USD";
 
-			const [subs, budgets, expenses, tasks, calendarRows, rates] =
-				await Promise.all([
-					prisma.subscription.findMany({ where: { userId: s.userId } }),
-					prisma.budget.findMany({ where: { userId: s.userId } }),
-					prisma.expense.findMany({
-						where: { userId: s.userId, date: { gte: start, lt: end } },
-					}),
-					prisma.task.findMany({
-						where: {
-							userId: s.userId,
-							status: { not: "done" },
-							dueDate: { not: null },
-						},
-					}),
-					prisma.calendarEvent.findMany({ where: { userId: s.userId } }),
-					getRates(displayCurrency),
-				]);
+			const [
+				subs,
+				budgets,
+				expenses,
+				tasks,
+				calendarRows,
+				allExpenses,
+				income,
+				taxRecords,
+				rates,
+			] = await Promise.all([
+				prisma.subscription.findMany({ where: { userId: s.userId } }),
+				prisma.budget.findMany({ where: { userId: s.userId } }),
+				prisma.expense.findMany({
+					where: { userId: s.userId, date: { gte: start, lt: end } },
+				}),
+				prisma.task.findMany({
+					where: {
+						userId: s.userId,
+						status: { not: "done" },
+						dueDate: { not: null },
+					},
+				}),
+				prisma.calendarEvent.findMany({ where: { userId: s.userId } }),
+				// All-time rows for the cumulative Total-net figure.
+				prisma.expense.findMany({ where: { userId: s.userId } }),
+				prisma.income.findMany({ where: { userId: s.userId } }),
+				prisma.taxRecord.findMany({ where: { userId: s.userId } }),
+				getRates(displayCurrency),
+			]);
 
 			const events = upcomingReminders(
 				calendarRows.map(serializeCalendarEvent) as CalendarEventRow[],
@@ -85,6 +98,27 @@ export async function sendDailyDigests(
 					status: t.status,
 				})),
 				events,
+				income: income
+					.filter((r) => r.amount != null)
+					.map((r) => ({
+						date: r.date.toISOString(),
+						amount: Number(r.amount),
+						currency: r.currency,
+					})),
+				netExpenses: [
+					...allExpenses.map((e) => ({
+						date: e.date.toISOString(),
+						amount: Number(e.amount),
+						currency: e.currency,
+					})),
+					...taxRecords
+						.filter((r) => r.amount != null)
+						.map((r) => ({
+							date: r.date.toISOString(),
+							amount: Number(r.amount),
+							currency: r.currency,
+						})),
+				],
 				displayCurrency,
 				rates,
 				prefs: {
@@ -92,6 +126,7 @@ export async function sendDailyDigests(
 					budgets: s.notifyBudgets,
 					tasks: s.notifyTasks,
 					events: s.notifyEvents ?? true,
+					totalNet: s.notifyTotalNet ?? true,
 					budgetThreshold: (s.budgetAlertThreshold ?? 80) / 100,
 				},
 			};

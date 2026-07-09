@@ -151,6 +151,9 @@ model UserSettings {
   // Calendar events with a reminder set are surfaced in the daily digest once
   // their "remind before" lead time is reached (see CalendarEvent.reminderMinutes).
   notifyEvents    Boolean @default(true)
+  // Total-net change (cumulative income − expenses) vs yesterday and last month
+  // in the daily digest — mirrors the Reports "Total net" chart.
+  notifyTotalNet  Boolean @default(true)
   // Last time a monthly insight was sent — makes the monthly job idempotent so a
   // timed-out/re-run invocation never double-sends or drops users.
   lastInsightAt   DateTime?
