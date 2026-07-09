@@ -129,7 +129,7 @@ export function IncomeClient() {
 			<div className="flex flex-col gap-1">
 				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Income</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Track income per month, optionally scoped to a tax type.
+					Track income, optionally scoped to a tax type.
 				</p>
 			</div>
 			<div className="flex justify-end">
@@ -220,7 +220,7 @@ export function IncomeClient() {
 											ariaLabel="Select record"
 										/>
 									</td>
-									<td className="py-2">{r.date.slice(0, 7)}</td>
+									<td className="py-2">{r.date.slice(0, 10)}</td>
 									<td className="py-2">{r.taxConfigName ?? "—"}</td>
 									<td className="py-2 text-right tabular-nums">
 										{r.amount != null
@@ -288,7 +288,7 @@ export function IncomeClient() {
 											ariaLabel="Select record"
 										/>
 										<span className="text-sm font-semibold">
-											{r.date.slice(0, 7)}
+											{r.date.slice(0, 10)}
 										</span>
 									</div>
 									<p className="mt-1 text-sm text-muted-foreground">

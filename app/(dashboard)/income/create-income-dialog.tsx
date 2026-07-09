@@ -63,19 +63,16 @@ export function CreateIncomeDialog({
 	const initial = useMemo(() => {
 		if (mode.kind === "edit") {
 			const r = mode.record;
-			const d = new Date(r.date);
 			return {
 				taxConfigId: r.taxConfigId ?? "",
-				month: String(d.getUTCMonth() + 1),
-				year: String(d.getUTCFullYear()),
+				date: r.date.slice(0, 10),
 				amount: r.amount != null ? String(r.amount) : "",
 				description: r.description ?? "",
 			};
 		}
 		return {
 			taxConfigId: "",
-			month: String(today.getMonth() + 1),
-			year: String(today.getFullYear()),
+			date: today.toISOString().slice(0, 10),
 			amount: "",
 			description: "",
 		};
@@ -83,8 +80,7 @@ export function CreateIncomeDialog({
 	}, [mode]);
 
 	const [taxConfigId, setTaxConfigId] = useState<string>(initial.taxConfigId);
-	const [month, setMonth] = useState<string>(initial.month);
-	const [year, setYear] = useState<string>(initial.year);
+	const [date, setDate] = useState<string>(initial.date);
 	const [amount, setAmount] = useState<string>(initial.amount);
 	const [description, setDescription] = useState<string>(initial.description);
 	const [currency, setCurrency] = useState("USD");
@@ -93,8 +89,7 @@ export function CreateIncomeDialog({
 	useEffect(() => {
 		if (!open) return;
 		setTaxConfigId(initial.taxConfigId);
-		setMonth(initial.month);
-		setYear(initial.year);
+		setDate(initial.date);
 		setAmount(initial.amount);
 		setDescription(initial.description);
 		if (mode.kind === "edit") {
@@ -115,8 +110,7 @@ export function CreateIncomeDialog({
 		e.preventDefault();
 		const body = {
 			taxConfigId: taxConfigId || null,
-			month: Number(month),
-			year: Number(year),
+			date,
 			amount: amount !== "" ? Number(amount) : null,
 			currency,
 			description: description || null,
@@ -158,7 +152,7 @@ export function CreateIncomeDialog({
 					<DialogDescription>
 						{mode.kind === "edit"
 							? "Update this income entry."
-							: "Record income for a month, optionally scoped to a tax type."}
+							: "Record income for a date, optionally scoped to a tax type."}
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={submit} className="space-y-4">
@@ -179,31 +173,15 @@ export function CreateIncomeDialog({
 						</Select>
 					</div>
 
-					<div className="grid grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="inc-month">Month</Label>
-							<Input
-								id="inc-month"
-								type="number"
-								min={1}
-								max={12}
-								required
-								value={month}
-								onChange={(e) => setMonth(e.target.value)}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="inc-year">Year</Label>
-							<Input
-								id="inc-year"
-								type="number"
-								min={1900}
-								max={3000}
-								required
-								value={year}
-								onChange={(e) => setYear(e.target.value)}
-							/>
-						</div>
+					<div className="space-y-2">
+						<Label htmlFor="inc-date">Date</Label>
+						<Input
+							id="inc-date"
+							type="date"
+							required
+							value={date}
+							onChange={(e) => setDate(e.target.value)}
+						/>
 					</div>
 
 					<div className="grid grid-cols-3 gap-4">

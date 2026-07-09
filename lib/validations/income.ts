@@ -2,8 +2,7 @@ import { z } from "zod";
 
 export const incomeSchema = z.object({
 	taxConfigId: z.string().min(1).optional().nullable(),
-	month: z.number().int().min(1).max(12),
-	year: z.number().int().min(1900).max(3000),
+	date: z.string().optional(),
 	amount: z
 		.union([z.number(), z.string()])
 		.transform((v) => Number(v))

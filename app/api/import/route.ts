@@ -142,23 +142,20 @@ async function handler(req: Request): Promise<Response> {
 		{
 			safeParse: (v: unknown) => {
 				const r = (v ?? {}) as Json;
-				const d = toDate(r.date);
 				return incomeSchema.safeParse({
 					...r,
-					month: d.getUTCMonth() + 1,
-					year: d.getUTCFullYear(),
+					date: toDate(r.date).toISOString(),
 				});
 			},
 		},
 		(i) => {
-			const { month, year, ...rest } = i as {
-				month: number;
-				year: number;
+			const { date, ...rest } = i as {
+				date?: string;
 				taxConfigId?: string | null;
 			};
 			return {
 				...rest,
-				date: new Date(Date.UTC(year, month - 1, 1)),
+				date: date ? new Date(date) : new Date(),
 				userId,
 			};
 		},
