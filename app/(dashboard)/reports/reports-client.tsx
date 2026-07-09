@@ -34,7 +34,6 @@ import type { Subscription } from "../subscriptions/subscription-client";
 
 type TaxRecord = {
 	id: string;
-	type: "expense" | "declaration_sent" | "declaration_todo";
 	date: string;
 	amount: number | null;
 	currency: string | null;
@@ -131,8 +130,7 @@ export function ReportsClient() {
 		}
 		for (const r of records) {
 			if (r.amount == null || !isInRange(r.date, range)) continue;
-			if (r.type === "expense")
-				expense += toBase(r.amount, r.currency ?? currency, r.date);
+			expense += toBase(r.amount, r.currency ?? currency, r.date);
 		}
 		for (const e of expenses) {
 			if (isInRange(e.date, range)) {

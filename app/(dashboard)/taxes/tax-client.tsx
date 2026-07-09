@@ -40,9 +40,6 @@ export function TaxClient() {
 	const filtered = useMemo(() => {
 		if (!records) return [];
 		return records.filter((r) => {
-			// Only tax expense rows are shown/creatable now (income and declaration
-			// records were split out); hide any legacy non-expense rows.
-			if (r.type !== "expense") return false;
 			if (configFilter !== "all" && r.taxConfigId !== configFilter)
 				return false;
 			if (

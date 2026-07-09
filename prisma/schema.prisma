@@ -202,7 +202,6 @@ model TaxConfig {
 model TaxRecord {
   id          String     @id @default(cuid())
   userId      String
-  type        String
   taxConfigId String?
   date        DateTime
   amount      Decimal?   @db.Decimal(10, 2)
@@ -214,13 +213,12 @@ model TaxRecord {
   taxConfig   TaxConfig? @relation(fields: [taxConfigId], references: [id], onDelete: SetNull)
 
   @@index([userId])
-  @@index([type])
   @@index([date])
 }
 
-// Income entries, split out of TaxRecord (which now only holds expense and
-// declaration rows). An income row may reference a TaxConfig — this scopes it to
-// a tax type and lets the tax-record form pre-fill a rate-based amount off it.
+// Income entries, split out of TaxRecord (which now only holds tax expenses).
+// An income row may reference a TaxConfig — this scopes it to a tax type and
+// lets the tax-record form pre-fill a rate-based amount off it.
 model Income {
   id          String     @id @default(cuid())
   userId      String

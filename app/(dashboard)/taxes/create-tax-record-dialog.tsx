@@ -27,7 +27,6 @@ import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 
 export type TaxRecord = {
 	id: string;
-	type: "expense";
 	taxConfigId: string | null;
 	taxConfigName: string | null;
 	currency: string | null;
@@ -212,7 +211,6 @@ export function CreateTaxRecordDialog({
 	async function submit(e: React.FormEvent) {
 		e.preventDefault();
 		const body = {
-			type: "expense" as const,
 			taxConfigId: taxConfigId || null,
 			month: Number(month),
 			year: Number(year),

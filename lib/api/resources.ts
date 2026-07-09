@@ -69,7 +69,6 @@ export const serializeTaxConfig = (c: Row) => ({
 export const serializeTaxRecord = (r: Row) => ({
 	id: r.id,
 	userId: r.userId,
-	type: r.type,
 	taxConfigId: r.taxConfigId,
 	taxConfigName: r.taxConfig?.name ?? null,
 	currency: r.currency,

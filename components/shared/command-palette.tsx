@@ -17,7 +17,6 @@ type Goal = { id: string; name: string };
 type Account = { id: string; name: string; type: string };
 type TaxRecord = {
 	id: string;
-	type: string;
 	description: string | null;
 	taxConfigName: string | null;
 };
@@ -158,8 +157,8 @@ export function CommandPalette({
 			for (const a of matchAndRank(query, accounts ?? [], (x) => `${x.name} ${x.type}`, PER_GROUP)) {
 				out.push({ key: `acct:${a.id}`, group: "Accounts", label: a.name, sub: a.type, onSelect: goTo("/net-worth") });
 			}
-			for (const r of matchAndRank(query, taxRecords ?? [], (x) => `${x.description ?? ""} ${x.type} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
-				out.push({ key: `tax:${r.id}`, group: "Tax records", label: r.description || r.type.replace("_", " "), sub: r.taxConfigName ?? r.type.replace("_", " "), onSelect: goTo("/taxes") });
+			for (const r of matchAndRank(query, taxRecords ?? [], (x) => `${x.description ?? ""} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
+				out.push({ key: `tax:${r.id}`, group: "Tax records", label: r.description || r.taxConfigName || "Tax record", sub: r.taxConfigName ?? undefined, onSelect: goTo("/taxes") });
 			}
 			for (const r of matchAndRank(query, income ?? [], (x) => `${x.description ?? ""} ${x.taxConfigName ?? ""}`, PER_GROUP)) {
 				out.push({ key: `income:${r.id}`, group: "Income", label: r.description || "Income", sub: r.taxConfigName ?? undefined, onSelect: goTo("/income") });
