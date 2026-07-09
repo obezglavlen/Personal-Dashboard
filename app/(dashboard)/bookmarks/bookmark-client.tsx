@@ -10,7 +10,7 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -139,6 +139,11 @@ export function BookmarkClient() {
                     onChange={(e) => setForm({ ...form, category: e.target.value })} />
                 </div>
                 <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </DialogClose>
                   <Button type="submit">Save</Button>
                 </DialogFooter>
               </form>

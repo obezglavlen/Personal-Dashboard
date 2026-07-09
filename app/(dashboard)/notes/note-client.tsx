@@ -13,7 +13,7 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Trash2, Pin, Plus, StickyNote, Search } from "lucide-react";
@@ -150,10 +150,12 @@ export function NoteClient() {
                     placeholder="Add tag…"
                   />
                 </div>
-                <DialogFooter className="gap-2 sm:gap-2">
-                  <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                    Cancel
-                  </Button>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </DialogClose>
                   <Button type="submit">Save</Button>
                 </DialogFooter>
               </form>

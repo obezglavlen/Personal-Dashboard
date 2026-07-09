@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
@@ -402,6 +403,11 @@ function AccountDialog({
 						/>
 					</div>
 					<DialogFooter>
+						<DialogClose asChild>
+							<Button type="button" variant="outline">
+								Cancel
+							</Button>
+						</DialogClose>
 						<Button type="submit">{edit ? "Save" : "Add"}</Button>
 					</DialogFooter>
 				</form>
@@ -515,6 +521,11 @@ function GoalDialog({
 						</Select>
 					</div>
 					<DialogFooter>
+						<DialogClose asChild>
+							<Button type="button" variant="outline">
+								Cancel
+							</Button>
+						</DialogClose>
 						<Button type="submit">{edit ? "Save" : "Add"}</Button>
 					</DialogFooter>
 				</form>

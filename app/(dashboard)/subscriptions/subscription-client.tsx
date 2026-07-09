@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -377,6 +378,11 @@ export function SubscriptionClient() {
 								/>
 							</div>
 							<DialogFooter>
+								<DialogClose asChild>
+									<Button type="button" variant="outline">
+										Cancel
+									</Button>
+								</DialogClose>
 								<Button type="submit">Save</Button>
 							</DialogFooter>
 						</form>
