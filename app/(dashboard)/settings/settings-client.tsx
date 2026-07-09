@@ -51,6 +51,7 @@ export function SettingsClient() {
 	const [budgetAlertThreshold, setBudgetAlertThreshold] = useState(80);
 	const [savingNotif, setSavingNotif] = useState(false);
 	const [testingNotif, setTestingNotif] = useState(false);
+	const [sendingDigest, setSendingDigest] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const importModeRef = useRef<"merge" | "replace">("merge");
 	const [importing, setImporting] = useState(false);
@@ -136,6 +137,18 @@ export function SettingsClient() {
 			toast.error(err instanceof Error ? err.message : "Failed to send test");
 		} finally {
 			setTestingNotif(false);
+		}
+	}
+
+	async function sendDigestNow() {
+		setSendingDigest(true);
+		try {
+			await apiPost("/api/notify/digest", {});
+			toast.success("Digest sent — check Telegram");
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Failed to send digest");
+		} finally {
+			setSendingDigest(false);
 		}
 	}
 
@@ -425,6 +438,14 @@ export function SettingsClient() {
 									disabled={testingNotif}
 								>
 									{testingNotif ? "Sending…" : "Send test message"}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={sendDigestNow}
+									disabled={sendingDigest}
+								>
+									{sendingDigest ? "Sending…" : "Send digest now"}
 								</Button>
 							</div>
 						</form>
