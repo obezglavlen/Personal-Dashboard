@@ -32,6 +32,7 @@ type SettingsData = {
 	notifyTasks: boolean;
 	notifyInsights: boolean;
 	notifyEvents: boolean;
+	notifyTotalNet: boolean;
 	budgetAlertThreshold: number;
 };
 
@@ -46,6 +47,7 @@ export function SettingsClient() {
 	const [notifyTasks, setNotifyTasks] = useState(true);
 	const [notifyInsights, setNotifyInsights] = useState(true);
 	const [notifyEvents, setNotifyEvents] = useState(true);
+	const [notifyTotalNet, setNotifyTotalNet] = useState(true);
 	const [budgetAlertThreshold, setBudgetAlertThreshold] = useState(80);
 	const [savingNotif, setSavingNotif] = useState(false);
 	const [testingNotif, setTestingNotif] = useState(false);
@@ -66,6 +68,7 @@ export function SettingsClient() {
 				setNotifyTasks(data.notifyTasks);
 				setNotifyInsights(data.notifyInsights ?? true);
 				setNotifyEvents(data.notifyEvents ?? true);
+				setNotifyTotalNet(data.notifyTotalNet ?? true);
 				setBudgetAlertThreshold(data.budgetAlertThreshold ?? 80);
 			})
 			.catch(() => toast.error("Failed to load settings"));
@@ -106,6 +109,7 @@ export function SettingsClient() {
 				notifyTasks,
 				notifyInsights,
 				notifyEvents,
+				notifyTotalNet,
 				// Clamp into the API's accepted [1,100]; a cleared field coerces to 0
 				// (Number("") === 0), which would otherwise 400 the entire save.
 				budgetAlertThreshold: Math.min(
@@ -366,6 +370,12 @@ export function SettingsClient() {
 										label: "Calendar events with a reminder set",
 										checked: notifyEvents,
 										set: setNotifyEvents,
+									},
+									{
+										id: "notify-total-net",
+										label: "Total net change (vs yesterday and last month)",
+										checked: notifyTotalNet,
+										set: setNotifyTotalNet,
 									},
 								].map((row) => (
 									<label

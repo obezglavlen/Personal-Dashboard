@@ -21,6 +21,7 @@ const settingsSchema = z.object({
 	notifyTasks: z.boolean().optional(),
 	notifyInsights: z.boolean().optional(),
 	notifyEvents: z.boolean().optional(),
+	notifyTotalNet: z.boolean().optional(),
 	budgetAlertThreshold: z.number().int().min(1).max(100).optional(),
 	currentPassword: z.string().optional(),
 	newPassword: z.string().min(8).optional(),
@@ -46,6 +47,7 @@ export async function GET() {
 		notifyTasks: user?.settings?.notifyTasks ?? true,
 		notifyInsights: user?.settings?.notifyInsights ?? true,
 		notifyEvents: user?.settings?.notifyEvents ?? true,
+		notifyTotalNet: user?.settings?.notifyTotalNet ?? true,
 		budgetAlertThreshold: user?.settings?.budgetAlertThreshold ?? 80,
 	});
 }
@@ -74,6 +76,7 @@ export async function PUT(req: Request) {
 		notifyTasks,
 		notifyInsights,
 		notifyEvents,
+		notifyTotalNet,
 		budgetAlertThreshold,
 		currentPassword,
 		newPassword,
@@ -111,6 +114,7 @@ export async function PUT(req: Request) {
 	if (notifyTasks !== undefined) notif.notifyTasks = notifyTasks;
 	if (notifyInsights !== undefined) notif.notifyInsights = notifyInsights;
 	if (notifyEvents !== undefined) notif.notifyEvents = notifyEvents;
+	if (notifyTotalNet !== undefined) notif.notifyTotalNet = notifyTotalNet;
 	if (budgetAlertThreshold !== undefined)
 		notif.budgetAlertThreshold = budgetAlertThreshold;
 	if (Object.keys(notif).length > 0) {
