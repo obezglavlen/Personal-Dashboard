@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -22,24 +21,16 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { apiPatch, apiPost, fetcher } from "@/lib/api-client";
+import { apiPatch, apiPost } from "@/lib/api-client";
 import { CURRENCIES, currencyLabel } from "@/lib/currencies";
 
 export type Income = {
 	id: string;
-	taxConfigId: string | null;
-	taxConfigName: string | null;
 	currency: string | null;
 	date: string;
 	amount: number | null;
 	description: string | null;
 	createdAt: string;
-};
-
-type Config = {
-	id: string;
-	name: string;
-	currency: string;
 };
 
 type Mode = { kind: "create" } | { kind: "edit"; record: Income };
@@ -57,21 +48,17 @@ export function CreateIncomeDialog({
 	mode: Mode;
 	onModeChange: (m: Mode) => void;
 }) {
-	const { data: configs } = useSWR<Config[]>("/api/tax-configs", fetcher);
-
 	const today = new Date();
 	const initial = useMemo(() => {
 		if (mode.kind === "edit") {
 			const r = mode.record;
 			return {
-				taxConfigId: r.taxConfigId ?? "",
 				date: r.date.slice(0, 10),
 				amount: r.amount != null ? String(r.amount) : "",
 				description: r.description ?? "",
 			};
 		}
 		return {
-			taxConfigId: "",
 			date: today.toISOString().slice(0, 10),
 			amount: "",
 			description: "",
@@ -79,7 +66,6 @@ export function CreateIncomeDialog({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [mode]);
 
-	const [taxConfigId, setTaxConfigId] = useState<string>(initial.taxConfigId);
 	const [date, setDate] = useState<string>(initial.date);
 	const [amount, setAmount] = useState<string>(initial.amount);
 	const [description, setDescription] = useState<string>(initial.description);
@@ -88,28 +74,15 @@ export function CreateIncomeDialog({
 	// Re-sync local form state whenever the dialog opens in a new mode.
 	useEffect(() => {
 		if (!open) return;
-		setTaxConfigId(initial.taxConfigId);
 		setDate(initial.date);
 		setAmount(initial.amount);
 		setDescription(initial.description);
-		if (mode.kind === "edit") {
-			setCurrency(mode.record.currency ?? "USD");
-		} else {
-			const cfg = configs?.find((c) => c.id === initial.taxConfigId);
-			setCurrency(cfg?.currency ?? "USD");
-		}
-	}, [open, initial, configs, mode]);
-
-	function onConfigChange(v: string) {
-		setTaxConfigId(v);
-		const cfg = configs?.find((c) => c.id === v);
-		if (cfg?.currency) setCurrency(cfg.currency);
-	}
+		setCurrency(mode.kind === "edit" ? (mode.record.currency ?? "USD") : "USD");
+	}, [open, initial, mode]);
 
 	async function submit(e: React.FormEvent) {
 		e.preventDefault();
 		const body = {
-			taxConfigId: taxConfigId || null,
 			date,
 			amount: amount !== "" ? Number(amount) : null,
 			currency,
@@ -152,27 +125,10 @@ export function CreateIncomeDialog({
 					<DialogDescription>
 						{mode.kind === "edit"
 							? "Update this income entry."
-							: "Record income for a date, optionally scoped to a tax type."}
+							: "Record income for a date."}
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={submit} className="space-y-4">
-					<div className="space-y-2">
-						<Label>Tax Type</Label>
-						<Select value={taxConfigId} onValueChange={onConfigChange}>
-							<SelectTrigger>
-								<SelectValue placeholder="(none)" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="">(none)</SelectItem>
-								{configs?.map((c) => (
-									<SelectItem key={c.id} value={c.id}>
-										{c.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-
 					<div className="space-y-2">
 						<Label htmlFor="inc-date">Date</Label>
 						<Input

@@ -26,7 +26,6 @@ export function IncomeClient() {
 		mutate,
 		remove: removeRecord,
 	} = useResource<Income>("/api/income");
-	const [configFilter, setConfigFilter] = useState<string>("all");
 	const [search, setSearch] = useState("");
 	const [open, setOpen] = useState(false);
 	const [mode, setMode] = useState<Mode>({ kind: "create" });
@@ -37,8 +36,6 @@ export function IncomeClient() {
 	const filtered = useMemo(() => {
 		if (!records) return [];
 		return records.filter((r) => {
-			if (configFilter !== "all" && r.taxConfigId !== configFilter)
-				return false;
 			if (
 				search &&
 				!(r.description ?? "").toLowerCase().includes(search.toLowerCase())
@@ -47,12 +44,12 @@ export function IncomeClient() {
 			}
 			return true;
 		});
-	}, [records, configFilter, search]);
+	}, [records, search]);
 
-	// Reset to first page when filters or page size change.
+	// Reset to first page when the filter or page size change.
 	useEffect(() => {
 		setPage(0);
-	}, [configFilter, search, pageSize]);
+	}, [search, pageSize]);
 
 	const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 	const clampedPage = Math.min(page, totalPages - 1);
@@ -129,7 +126,7 @@ export function IncomeClient() {
 			<div className="flex flex-col gap-1">
 				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Income</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
-					Track income, optionally scoped to a tax type.
+					Track your income entries.
 				</p>
 			</div>
 			<div className="flex justify-end">
@@ -140,13 +137,6 @@ export function IncomeClient() {
 
 			<Card>
 				<CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
-					<div className="space-y-2">
-						<Label htmlFor="income-config-filter">Tax Type</Label>
-						<TaxConfigFilterSelect
-							value={configFilter}
-							onChange={setConfigFilter}
-						/>
-					</div>
 					<div className="space-y-2 sm:flex-1 sm:min-w-48">
 						<Label htmlFor="income-search">Search</Label>
 						<Input
@@ -194,7 +184,6 @@ export function IncomeClient() {
 									/>
 								</th>
 								<th className="pb-2">Date</th>
-								<th className="pb-2">Tax</th>
 								<th className="pb-2 text-right">Amount</th>
 								<th className="pb-2 pl-6">Description</th>
 								<th className="pb-2"></th>
@@ -204,7 +193,7 @@ export function IncomeClient() {
 							{filtered.length === 0 && (
 								<tr>
 									<td
-										colSpan={6}
+										colSpan={5}
 										className="py-6 text-center text-muted-foreground"
 									>
 										No income. Use the Create button above.
@@ -221,7 +210,6 @@ export function IncomeClient() {
 										/>
 									</td>
 									<td className="py-2">{r.date.slice(0, 10)}</td>
-									<td className="py-2">{r.taxConfigName ?? "—"}</td>
 									<td className="py-2 text-right tabular-nums">
 										{r.amount != null
 											? formatMoney(r.amount, r.currency ?? "USD")
@@ -291,9 +279,6 @@ export function IncomeClient() {
 											{r.date.slice(0, 10)}
 										</span>
 									</div>
-									<p className="mt-1 text-sm text-muted-foreground">
-										{r.taxConfigName ?? "—"}
-									</p>
 									{r.description && (
 										<p className="mt-1 text-sm">{r.description}</p>
 									)}
@@ -349,33 +334,6 @@ export function IncomeClient() {
 				onModeChange={setMode}
 			/>
 		</div>
-	);
-}
-
-function TaxConfigFilterSelect({
-	value,
-	onChange,
-}: {
-	value: string;
-	onChange: (v: string) => void;
-}) {
-	const { items: data } = useResource<{ id: string; name: string }>(
-		"/api/tax-configs",
-	);
-	return (
-		<Select value={value} onValueChange={onChange}>
-			<SelectTrigger id="income-config-filter" className="w-full sm:w-48">
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent>
-				<SelectItem value="all">All</SelectItem>
-				{data?.map((c) => (
-					<SelectItem key={c.id} value={c.id}>
-						{c.name}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
 	);
 }
 
