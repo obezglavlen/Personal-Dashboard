@@ -140,6 +140,9 @@ model UserSettings {
   theme           String  @default("system")
   currency        String  @default("USD")
   dashboardLayout Json?
+  // Sidebar nav ordering: { order: string[] } of hrefs. Unknown/removed hrefs
+  // are reconciled against the registry at read time (see lib/nav/items.ts).
+  navLayout       Json?
   // Telegram daily-digest notifications. Sending is "on" when telegramChatId is
   // set; the per-section flags choose what the digest includes.
   telegramChatId  String?
