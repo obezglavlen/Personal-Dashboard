@@ -12,8 +12,12 @@
 export const WIDGETS = [
 	{ id: "stats", title: "Stat cards" },
 	{ id: "net-worth", title: "Net worth" },
+	{ id: "total-net", title: "Total net" },
 	{ id: "income-expense", title: "Income / Expense chart" },
 	{ id: "budget-status", title: "Budget status" },
+	{ id: "last-expenses", title: "Last expenses" },
+	{ id: "last-income", title: "Last income" },
+	{ id: "last-taxes", title: "Last taxes" },
 	{ id: "upcoming-renewals", title: "Upcoming renewals" },
 	{ id: "due-tasks", title: "Tasks due soon" },
 	{ id: "upcoming-events", title: "Upcoming events" },

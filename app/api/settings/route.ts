@@ -15,6 +15,11 @@ const settingsSchema = z.object({
 			hidden: z.array(z.string()),
 		})
 		.optional(),
+	navLayout: z
+		.object({
+			order: z.array(z.string()),
+		})
+		.optional(),
 	telegramChatId: telegramChatIdSchema.nullable().optional(),
 	notifyRenewals: z.boolean().optional(),
 	notifyBudgets: z.boolean().optional(),
@@ -70,6 +75,7 @@ export async function PUT(req: Request) {
 		name,
 		currency,
 		dashboardLayout,
+		navLayout,
 		telegramChatId,
 		notifyRenewals,
 		notifyBudgets,
@@ -102,6 +108,14 @@ export async function PUT(req: Request) {
 			where: { userId: session.user.id },
 			update: { dashboardLayout },
 			create: { userId: session.user.id, dashboardLayout },
+		});
+	}
+
+	if (navLayout) {
+		await prisma.userSettings.upsert({
+			where: { userId: session.user.id },
+			update: { navLayout },
+			create: { userId: session.user.id, navLayout },
 		});
 	}
 

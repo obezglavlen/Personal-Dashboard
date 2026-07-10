@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/api-client";
+import { NAV_ITEMS } from "@/lib/nav/items";
 import { matchAndRank } from "@/lib/search/match";
-import { navItems } from "./sidebar";
 
 type Bookmark = { id: string; title: string; url: string };
 type Note = { id: string; title: string; tags: string[] };
@@ -103,7 +103,7 @@ export function CommandPalette({
 		const out: Result[] = [];
 
 		// Navigation is always available; with no query, show all pages.
-		for (const item of navItems) {
+		for (const item of NAV_ITEMS) {
 			if (q && !match(item.label)) continue;
 			out.push({
 				key: `nav:${item.href}`,

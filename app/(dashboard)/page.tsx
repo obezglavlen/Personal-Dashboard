@@ -29,7 +29,13 @@ import { DashboardGrid } from "./dashboard-grid";
 import { DueTasksWidget } from "./due-tasks-widget";
 import { IncomeExpenseChart } from "./income-expense-chart";
 import { NetWorthWidget } from "./net-worth-widget";
+import {
+	LastExpensesWidget,
+	LastIncomeWidget,
+	LastTaxesWidget,
+} from "./recent-transactions-widgets";
 import { RenewalsWidget } from "./renewals-widget";
+import { TotalNetWidget } from "./total-net-widget";
 import { UpcomingEventsWidget } from "./upcoming-events-widget";
 
 export default async function DashboardPage() {
@@ -173,8 +179,12 @@ export default async function DashboardPage() {
 			</div>
 		),
 		"net-worth": <NetWorthWidget />,
+		"total-net": <TotalNetWidget />,
 		"income-expense": <IncomeExpenseChart />,
 		"budget-status": <BudgetWidget />,
+		"last-expenses": <LastExpensesWidget />,
+		"last-income": <LastIncomeWidget />,
+		"last-taxes": <LastTaxesWidget />,
 		"upcoming-renewals": <RenewalsWidget />,
 		"due-tasks": <DueTasksWidget />,
 		"upcoming-events": <UpcomingEventsWidget />,

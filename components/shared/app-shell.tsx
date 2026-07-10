@@ -9,6 +9,8 @@ import { Sidebar } from "./sidebar";
 interface AppShellProps {
   headerRight: React.ReactNode;
   children: React.ReactNode;
+  /** Persisted sidebar nav order (hrefs), reconciled against the registry. */
+  navOrder?: string[];
 }
 
 /**
@@ -19,7 +21,7 @@ interface AppShellProps {
  * server component (it calls getServerSession), and the drawer state has
  * to live in a client component.
  */
-export function AppShell({ headerRight, children }: AppShellProps) {
+export function AppShell({ headerRight, children, navOrder }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -40,6 +42,7 @@ export function AppShell({ headerRight, children }: AppShellProps) {
       <Sidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        initialNavOrder={navOrder}
       />
 
       <div className="flex flex-1 flex-col lg:overflow-hidden">
