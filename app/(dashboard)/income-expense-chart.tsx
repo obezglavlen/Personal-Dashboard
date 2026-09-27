@@ -254,6 +254,7 @@ export function IncomeExpenseChart() {
 			<CardContent>
 				<div className="mb-4">
 					<TagInput
+						ariaLabel="Filter expenses by tag"
 						value={tagFilter}
 						onChange={setTagFilter}
 						suggestions={allTags}

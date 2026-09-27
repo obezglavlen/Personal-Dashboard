@@ -166,8 +166,10 @@ export function ExpenseClient() {
 						/>
 					</div>
 					<div className="space-y-2 sm:flex-1 sm:min-w-64">
-						<Label>Filter by tags</Label>
+						<Label htmlFor="exp-tag-filter">Filter by tags</Label>
 						<TagInput
+							id="exp-tag-filter"
+							ariaLabel="Filter by tags"
 							value={tagFilter}
 							onChange={setTagFilter}
 							suggestions={allTags}

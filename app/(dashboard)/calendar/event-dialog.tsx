@@ -300,7 +300,7 @@ export function EventDialog({
 						All day
 					</label>
 
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="space-y-2">
 							<Label htmlFor="ev-date">Date</Label>
 							<Input
@@ -324,7 +324,7 @@ export function EventDialog({
 						)}
 					</div>
 
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="space-y-2">
 							<Label htmlFor="ev-enddate">End date (optional)</Label>
 							<Input
@@ -347,7 +347,7 @@ export function EventDialog({
 						)}
 					</div>
 
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="space-y-2">
 							<Label htmlFor="ev-recurrence">Repeat</Label>
 							<Select
@@ -423,8 +423,9 @@ export function EventDialog({
 					</div>
 
 					<div className="space-y-2">
-						<Label>Tags</Label>
+						<Label htmlFor="ev-tags">Tags</Label>
 						<TagInput
+							id="ev-tags"
 							value={form.tags}
 							onChange={(tags) => set("tags", tags)}
 							suggestions={tagSuggestions}

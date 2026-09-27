@@ -114,7 +114,7 @@ export function buildTools(userId: string) {
 
 		getBudgets: tool({
 			description:
-				"List the user's budgets (monthly spending caps) with how much has been spent against each this calendar month. Spent is grouped by currency and not FX-converted. Use to answer 'am I over budget?'.",
+				"List the user's limits (monthly spending caps) with how much has been spent against each this calendar month. Spent is grouped by currency and not FX-converted. Use to answer 'am I over any limit?'.",
 			inputSchema: z.object({}),
 			execute: async () => {
 				const { start, end } = currentMonthRange();
@@ -243,7 +243,7 @@ export function buildTools(userId: string) {
 
 		getNetWorth: tool({
 			description:
-				"List the user's financial accounts (cash, investments, liabilities) with balances, plus net worth totaled per currency. Negative balances are liabilities.",
+				"List the user's financial accounts from Accounting (cash, investments, liabilities) with balances, plus net worth totaled per currency. Negative balances are liabilities.",
 			inputSchema: z.object({}),
 			execute: async () => {
 				const accounts = await prisma.financialAccount.findMany({
@@ -553,7 +553,7 @@ export function buildTools(userId: string) {
 
 		createBudget: tool({
 			description:
-				"Create a monthly budget: a spending cap (`amount`) matched against expenses carrying any of `tags` (empty = all expenses). Needs user approval before it is saved.",
+				"Create a monthly limit: a spending cap (`amount`) matched against expenses carrying any of `tags` (empty = all expenses). Needs user approval before it is saved.",
 			inputSchema: budgetSchema,
 			needsApproval: true,
 			execute: async (input) => {
@@ -614,7 +614,7 @@ export function buildTools(userId: string) {
 
 		createFinancialAccount: tool({
 			description:
-				"Create a financial account for net worth. `type` is one of cash|checking|savings|investment|crypto|property|loan|credit|other. `balance` may be negative for liabilities. Needs user approval before it is saved.",
+				"Create a financial account in Accounting to include in net worth. `type` is one of cash|checking|savings|investment|crypto|property|loan|credit|other. `balance` may be negative for liabilities. Needs user approval before it is saved.",
 			inputSchema: accountSchema,
 			needsApproval: true,
 			execute: async (input) => {

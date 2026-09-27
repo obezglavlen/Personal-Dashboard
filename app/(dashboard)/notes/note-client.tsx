@@ -142,8 +142,9 @@ export function NoteClient() {
                     onChange={(e) => setForm({ ...form, content: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Tags</Label>
+                  <Label htmlFor="note-tags">Tags</Label>
                   <TagInput
+                    id="note-tags"
                     value={form.tags}
                     onChange={(tags) => setForm({ ...form, tags })}
                     suggestions={tagSuggestions}

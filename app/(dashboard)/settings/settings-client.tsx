@@ -272,15 +272,27 @@ export function SettingsClient() {
 							<Database className="h-4 w-4" /> Data
 						</CardTitle>
 						<CardDescription>
-							Export your data as a portable backup, or import it into this or
-							another deployment.
+							Download selected records as JSON; this is not a complete backup.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
+						<p role="alert" className="text-sm text-destructive">
+							This is a partial JSON export, not a complete backup. It includes
+							only bookmarks, notes, tasks, subscriptions, expenses, income, tax
+							configs and tax records. Not included: limits (budgets), financial
+							accounts, savings goals, recurring transactions, calendar events,
+							user settings, tag catalog and net-worth history. Do not rely on it
+							as your only backup.
+						</p>
+						<p className="text-xs text-muted-foreground">
+							Import creates new IDs and timestamps. Subscription last-posted
+							state is not restored, so automatic expenses may post again; tax
+							record dates become the first day of their month.
+						</p>
 						<div className="flex flex-wrap gap-2">
 							<Button asChild variant="outline">
 								<a href="/api/export">
-									<Download className="h-4 w-4" /> Export JSON
+									<Download className="h-4 w-4" /> Export partial JSON
 								</a>
 							</Button>
 							<Button
@@ -298,13 +310,15 @@ export function SettingsClient() {
 								onClick={() => pickFile("replace")}
 								disabled={importing}
 							>
-								<Upload className="h-4 w-4" /> Import (replace all)
+								<Upload className="h-4 w-4" /> Import (replace covered data)
 							</Button>
 						</div>
 						<p className="text-xs text-muted-foreground">
-							Merge adds the imported records alongside your existing data.
-							Replace deletes all current bookmarks, notes, tasks,
-							subscriptions, expenses and tax data first.
+							Merge adds imported records. Replace deletes only current
+							bookmarks, notes, tasks, subscriptions, expenses, income, tax
+							configs and tax records first; omitted datasets are not changed.
+							Replace refuses files missing any included dataset or containing
+							invalid rows.
 						</p>
 						<input
 							ref={fileInputRef}
@@ -322,7 +336,7 @@ export function SettingsClient() {
 							<Bell className="h-4 w-4" /> Notifications
 						</CardTitle>
 						<CardDescription>
-							Get a daily Telegram digest of upcoming renewals, budgets near or
+							Get a daily Telegram digest of upcoming renewals, limits near or
 							over cap, overdue tasks, and calendar events you asked to be
 							reminded about.
 						</CardDescription>
@@ -362,7 +376,7 @@ export function SettingsClient() {
 									},
 									{
 										id: "notify-budgets",
-										label: "Budgets near or over cap",
+										label: "Limits near or over cap",
 										checked: notifyBudgets,
 										set: setNotifyBudgets,
 									},
@@ -409,7 +423,7 @@ export function SettingsClient() {
 							</fieldset>
 							<div className="space-y-2">
 								<Label htmlFor="settings-budget-threshold">
-									Budget alert threshold (%)
+									Limit alert threshold (%)
 								</Label>
 								<Input
 									id="settings-budget-threshold"
@@ -423,7 +437,7 @@ export function SettingsClient() {
 									className="w-28"
 								/>
 								<p className="text-xs text-muted-foreground">
-									A budget is flagged in the digest once spending reaches this
+									A limit is flagged in the digest once spending reaches this
 									percent of its cap.
 								</p>
 							</div>
@@ -459,11 +473,13 @@ export function SettingsClient() {
 			>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Replace all data?</DialogTitle>
+						<DialogTitle>Replace covered data?</DialogTitle>
 						<DialogDescription>
-							This permanently deletes all your current bookmarks, notes, tasks,
-							subscriptions, expenses and tax data, then imports the file. This
-							cannot be undone.
+							This permanently deletes your current bookmarks, notes, tasks,
+							subscriptions, expenses, income, tax configs and tax records, then
+							imports the file. It does not delete limits, financial accounts,
+							goals, recurring transactions, calendar events, settings, tags or
+							net-worth history. This cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -482,7 +498,7 @@ export function SettingsClient() {
 							onClick={() => pendingFile && runImport(pendingFile, true)}
 							disabled={importing || !pendingFile}
 						>
-							{importing ? "Replacing…" : "Replace everything"}
+							{importing ? "Replacing…" : "Replace covered data"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

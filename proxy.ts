@@ -1,19 +1,19 @@
+import { isIP } from "node:net";
 import { type NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 /**
- * Edge proxy (Next's renamed middleware). Two jobs, split by path:
+ * Next.js 16 Node proxy (formerly middleware). Two jobs, split by path:
  *
- * - `/api/*` — lightweight per-IP rate limiting, with tighter caps on the
- *   cost/abuse-sensitive `/api/chat` (LLM) and credentials login. API routes do
+ * - `/api/*` — rate limiting by trusted IP, or one shared bucket per tier
+ *   if no trustworthy IP exists. `/api/chat` and credentials have tighter caps.
+ *   API routes do
  *   their own auth via `requireUserId`, so we never redirect them to /login.
  *   Cron routes are skipped (server-to-server, CRON_SECRET-guarded).
  * - everything else — require a session, redirecting to /login otherwise.
  *
- * The rate-limit counter is an in-memory fixed window: per-instance on
- * serverless/Edge and reset on cold start, so it's a best-effort guard suited to
- * this single-user/self-host app rather than a distributed limiter (Upstash is
- * the scale-up path).
+ * Counters are in-memory per instance and reset on cold start: best effort,
+ * NOT a distributed or strong abuse-prevention mechanism.
  */
 
 interface Rule {
@@ -44,9 +44,20 @@ interface Bucket {
 const buckets = new Map<string, Bucket>();
 
 function clientIp(req: NextRequest): string {
-	const xff = req.headers.get("x-forwarded-for");
-	if (xff) return xff.split(",")[0].trim();
-	return req.headers.get("x-real-ip") ?? "unknown";
+	// NextRequest doesn't attest a peer IP. Only these deployment-controlled
+	// paths may supply one; never use caller-controlled XFF / X-Real-IP directly.
+	// Self-host opt-in: RATE_LIMIT_TRUSTED_PROXY=1 requires a reverse proxy that
+	// overwrites X-Dashboard-Client-IP with its verified client IP and prevents
+	// direct access to the app port. Docker Compose publishes :3000 by default;
+	// do not enable this option there without first restricting that port.
+	const ip = (process.env.VERCEL === "1"
+		? req.headers.get("x-vercel-forwarded-for")
+		: process.env.RATE_LIMIT_TRUSTED_PROXY === "1"
+			? req.headers.get("x-dashboard-client-ip")
+			: null
+	)?.trim();
+	if (!ip || !isIP(ip)) return "shared";
+	return isIP(ip) === 6 ? new URL(`http://[${ip}]/`).hostname : ip;
 }
 
 function rateLimit(req: NextRequest): NextResponse {

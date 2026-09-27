@@ -38,9 +38,15 @@ export interface CrudOptions<TCreate, TUpdate> {
   /** Transform a row before it is serialized to JSON (e.g. Decimal -> number). */
   serialize?: (row: Row) => unknown;
   /** Build the `data` for a create. Defaults to `{ ...input, userId }`. */
-  toCreateData?: (input: TCreate, userId: string) => Record<string, unknown>;
+  toCreateData?: (
+    input: TCreate,
+    userId: string,
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>;
   /** Build the `data` for an update. Defaults to `{ ...input }`. */
-  toUpdateData?: (input: TUpdate) => Record<string, unknown>;
+  toUpdateData?: (
+    input: TUpdate,
+    userId: string,
+  ) => Record<string, unknown> | Promise<Record<string, unknown>>;
   /**
    * If set, pull the tag list out of a create/update input so it can be synced
    * into the per-user Tag catalog (shared autocomplete across all modals).
@@ -71,7 +77,7 @@ export function crudHandlers<TCreate, TUpdate>(opts: CrudOptions<TCreate, TUpdat
     const userId = await requireUserId();
     const input = await parseBody(req, opts.createSchema);
     const data = opts.toCreateData
-      ? opts.toCreateData(input, userId)
+      ? await opts.toCreateData(input, userId)
       : { ...input, userId };
     const row = await opts.delegate.create({ data, ...withInclude });
     if (opts.tagsOf) await syncTags(userId, opts.tagsOf(input));
@@ -82,7 +88,7 @@ export function crudHandlers<TCreate, TUpdate>(opts: CrudOptions<TCreate, TUpdat
     const userId = await requireUserId();
     const { id } = await ctx.params;
     const input = await parseBody(req, opts.updateSchema);
-    const data = opts.toUpdateData ? opts.toUpdateData(input) : { ...input };
+    const data = opts.toUpdateData ? await opts.toUpdateData(input, userId) : { ...input };
     const row = await opts.delegate.update({
       where: { id, userId },
       data,

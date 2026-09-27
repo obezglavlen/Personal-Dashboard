@@ -13,8 +13,48 @@ import { toCsv } from "@/lib/export/csv";
 
 export const EXPORT_VERSION = 1;
 
+/** Version 1 exports only these eight resources; it is NOT a complete backup. */
+export const BACKUP_SCOPE = {
+	partial: true,
+	included: [
+		"bookmarks",
+		"notes",
+		"tasks",
+		"subscriptions",
+		"taxConfigs",
+		"taxRecords",
+		"income",
+		"expenses",
+	],
+	omitted: [
+		"budgets",
+		"financialAccounts",
+		"goals",
+		"recurringTransactions",
+		"calendarEvents",
+		"userSettings",
+		"tags",
+		"netWorthSnapshots",
+	],
+	replaceDeletes: [
+		"bookmarks",
+		"notes",
+		"tasks",
+		"subscriptions",
+		"taxConfigs",
+		"taxRecords",
+		"income",
+		"expenses",
+	],
+	importLimitations: [
+		"Import creates new IDs and created/updated timestamps, not a byte-for-byte restore.",
+		"Subscription lastPostedAt is not restored; automatic expense posting may repeat after import.",
+		"Tax record dates are normalized to the first of their month on import.",
+	],
+} as const;
+
 /**
- * Gather every user-owned row for export, keyed by the same resource names used
+ * Gather the eight v1 resources, keyed by the same resource names used
  * in the import envelope. Custom-serialized models reuse the API serializers so
  * the export matches what the REST endpoints return; the rest export raw rows
  * (Dates become ISO strings via JSON serialization).
@@ -87,6 +127,7 @@ async function handler(req: Request): Promise<Response> {
 	const bundle = {
 		version: EXPORT_VERSION,
 		exportedAt: new Date().toISOString(),
+		scope: BACKUP_SCOPE,
 		data,
 	};
 	return new NextResponse(JSON.stringify(bundle, null, 2), {

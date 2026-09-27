@@ -420,7 +420,7 @@ function RecurringDialog({
 							</Select>
 						</div>
 					</div>
-					<div className="grid grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 						<div className="space-y-2">
 							<Label htmlFor="rec-start">Start date</Label>
 							<Input
@@ -442,8 +442,9 @@ function RecurringDialog({
 						</div>
 					</div>
 					<div className="space-y-2">
-						<Label>Tags</Label>
+						<Label htmlFor="rec-tags">Tags</Label>
 						<TagInput
+						id="rec-tags"
 							value={form.tags}
 							onChange={(tags) => set("tags", tags)}
 							suggestions={tagSuggestions}

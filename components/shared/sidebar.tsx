@@ -17,10 +17,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { GripVertical, LayoutDashboard, Pencil, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiPut } from "@/lib/api-client";
@@ -55,6 +56,8 @@ export function Sidebar({
   const [saved, setSaved] = useState<string[]>(base);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const previousPathname = useRef(pathname);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -63,30 +66,25 @@ export function Sidebar({
     }),
   );
 
-  // Close the drawer on route change — clicking a nav item should hide it.
+  // Close after navigation, not when the opener/callback changes while the
+  // drawer is open. Tracking the previous route keeps hook dependencies honest.
   useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
     if (mobileOpen) onMobileClose?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, mobileOpen, onMobileClose]);
 
-  // Lock body scroll while the drawer is open on mobile.
+  // The panel is lg:hidden; close its modal scope before it can remain
+  // logically open (and trap focus) behind the desktop rail.
   useEffect(() => {
-    if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
+    if (!mobileOpen || !window.matchMedia) return;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onChange = (event: MediaQueryListEvent) => {
+      if (event.matches) onMobileClose?.();
     };
-  }, [mobileOpen]);
-
-  // ESC to close on mobile for keyboard users.
-  useEffect(() => {
-    if (!mobileOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onMobileClose?.();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    desktop.addEventListener("change", onChange);
+    if (desktop.matches) onMobileClose?.();
+    return () => desktop.removeEventListener("change", onChange);
   }, [mobileOpen, onMobileClose]);
 
   function handleDragEnd(event: DragEndEvent) {
@@ -143,38 +141,45 @@ export function Sidebar({
         {nav}
       </aside>
 
-      {/* Mobile drawer overlay */}
-      <div
-        className={cn(
-          "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-200 lg:hidden",
-          mobileOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        )}
-        onClick={onMobileClose}
-        aria-hidden="true"
-      />
-
-      {/* Mobile drawer panel */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl transition-transform duration-200 ease-out lg:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation"
+      <DialogPrimitive.Root
+        open={mobileOpen}
+        onOpenChange={(open) => {
+          if (!open) onMobileClose?.();
+        }}
       >
-        <button
-          type="button"
-          onClick={onMobileClose}
-          aria-label="Close navigation"
-          className="absolute right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] inline-flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          <X className="h-5 w-5" />
-        </button>
-        {nav}
-      </aside>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 lg:hidden" />
+          <DialogPrimitive.Content
+            asChild
+            aria-modal="true"
+            aria-describedby={undefined}
+            onOpenAutoFocus={() => {
+              openerRef.current = document.activeElement as HTMLElement | null;
+            }}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              if (!window.matchMedia?.("(min-width: 1024px)").matches && openerRef.current?.isConnected) {
+                openerRef.current?.focus();
+              }
+            }}
+          >
+            {/* Mobile drawer panel */}
+            <aside className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl duration-200 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-left-full data-[state=closed]:slide-out-to-left-full lg:hidden">
+              <DialogPrimitive.Title className="sr-only">Navigation</DialogPrimitive.Title>
+              <DialogPrimitive.Close asChild>
+                <button
+                  type="button"
+                  aria-label="Close navigation"
+                  className="absolute right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] inline-flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </DialogPrimitive.Close>
+              {nav}
+            </aside>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </>
   );
 }
@@ -241,7 +246,7 @@ function NavBody({
             const isActive =
               item.href === "/"
                 ? pathname === "/"
-                : pathname === item.href || pathname.startsWith(item.href + "/");
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

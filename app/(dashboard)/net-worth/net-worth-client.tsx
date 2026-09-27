@@ -97,7 +97,7 @@ export function NetWorthClient() {
 		<div className="space-y-4 sm:space-y-6">
 			<div className="flex flex-col gap-1">
 				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-					Net Worth
+					Accounting
 				</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
 					Track account balances and savings goals. Amounts in {currency}.

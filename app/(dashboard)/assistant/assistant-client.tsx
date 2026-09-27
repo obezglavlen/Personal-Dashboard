@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const TOOL_LABELS: Record<string, string> = {
 	getExpenses: "expenses",
-	getBudgets: "budgets",
+	getBudgets: "limits",
 	getSubscriptions: "subscriptions",
 	getTasks: "tasks",
 	getNetWorth: "net worth",
@@ -33,7 +33,7 @@ const WRITE_LABELS: Record<string, string> = {
 	createTask: "task",
 	createNote: "note",
 	createBookmark: "bookmark",
-	createBudget: "budget",
+	createBudget: "limit",
 	createSubscription: "subscription",
 	createGoal: "goal",
 	createFinancialAccount: "account",
@@ -41,7 +41,7 @@ const WRITE_LABELS: Record<string, string> = {
 
 const SUGGESTIONS = [
 	"How much did I spend this month?",
-	"Am I over any budget?",
+	"Am I over any limit?",
 	"What subscriptions renew in the next two weeks?",
 	"What's my net worth?",
 ];
@@ -178,7 +178,7 @@ export function AssistantClient() {
 				<Input
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
-					placeholder="Ask about your spending, budgets, tasks…"
+					placeholder="Ask about your spending, limits, tasks…"
 					disabled={busy}
 					aria-label="Message"
 				/>

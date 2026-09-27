@@ -202,12 +202,12 @@ export function ReportsClient() {
 					Custom
 				</Button>
 				{rangeKey === "custom" && (
-					<div className="flex items-center gap-2">
-						<Input
-							type="date"
+				<div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+					<Input
+						type="date"
 							value={customFrom}
 							onChange={(e) => setCustomFrom(e.target.value)}
-							className="w-auto"
+							className="w-full sm:w-auto"
 							aria-label="From date"
 						/>
 						<span className="text-sm text-muted-foreground">→</span>
@@ -215,7 +215,7 @@ export function ReportsClient() {
 							type="date"
 							value={customTo}
 							onChange={(e) => setCustomTo(e.target.value)}
-							className="w-auto"
+							className="w-full sm:w-auto"
 							aria-label="To date"
 						/>
 					</div>

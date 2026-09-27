@@ -1,19 +1,23 @@
 import "dotenv/config";
-import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { PrismaClient } from "../generated/prisma/client";
+import { requiredAdminPassword } from "../lib/seed-admin";
 
+const adminPassword = requiredAdminPassword(process.env);
+const adminEmail = process.env.ADMIN_EMAIL ?? "admin@localhost.dev";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const hashedPassword = await bcrypt.hash("admin123", 12);
+  const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
   const user = await prisma.user.upsert({
-    where: { email: "admin@localhost.dev" },
-    update: { password: hashedPassword },
+    where: { email: adminEmail },
+    // Re-seeding must not reset a password changed in Settings.
+    update: {},
     create: {
-      email: "admin@localhost.dev",
+      email: adminEmail,
       name: "Admin",
       password: hashedPassword,
     },
@@ -143,7 +147,7 @@ async function main() {
     });
   }
 
-  console.log("Seed complete. Login: admin@localhost.dev / admin123");
+  console.log(`Seed complete for ${adminEmail}; password was not printed or reset.`);
 }
 
 main()

@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { spentForBudget } from "@/lib/budget";
-import { convertToBase, formatMoney } from "@/lib/format";
+import { budgetProgress } from "@/lib/budget";
+import { formatMoney } from "@/lib/format";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
@@ -34,12 +34,10 @@ export function BudgetClient() {
 
 	const rows = useMemo(
 		() =>
-			budgets.map((b) => {
-				const cap = convertToBase(b.amount, b.currency, currency, rates);
-				const spent = spentForBudget(b, expenses, currency, rates);
-				const pct = cap > 0 ? (spent / cap) * 100 : 0;
-				return { budget: b, cap, spent, pct, over: spent > cap };
-			}),
+			budgets.map((b) => ({
+				budget: b,
+				progress: budgetProgress(b, expenses, currency, rates),
+			})),
 		[budgets, expenses, currency, rates],
 	);
 
@@ -47,13 +45,15 @@ export function BudgetClient() {
 	const warned = useRef(false);
 	useEffect(() => {
 		if (warned.current || rows.length === 0) return;
-		const over = rows.filter((r) => r.over);
+		const over = rows.filter(
+			(r) => r.progress.status === "available" && r.progress.over,
+		);
 		if (over.length > 0) {
 			warned.current = true;
 			toast.warning(
 				over.length === 1
-					? `"${over[0].budget.name}" is over budget this month`
-					: `${over.length} budgets are over this month`,
+					? `"${over[0].budget.name}" exceeded its limit this month`
+					: `${over.length} limits have been exceeded this month`,
 			);
 		}
 	}, [rows]);
@@ -63,7 +63,7 @@ export function BudgetClient() {
 			await removeBudget(id);
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to delete budget",
+				err instanceof Error ? err.message : "Failed to delete limit",
 			);
 		}
 	}
@@ -82,7 +82,7 @@ export function BudgetClient() {
 		<div className="space-y-4 sm:space-y-6">
 			<div className="flex flex-col gap-1">
 				<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-					Budgets
+					Limits
 				</h1>
 				<p className="text-sm text-muted-foreground sm:text-base">
 					Set a monthly cap and track this month&apos;s spending against it.
@@ -98,12 +98,12 @@ export function BudgetClient() {
 			{rows.length === 0 ? (
 				<Card>
 					<CardContent className="py-10 text-center text-sm text-muted-foreground">
-						No budgets yet. Use the Create button above to add one.
+						No limits yet. Use the Create button above to add one.
 					</CardContent>
 				</Card>
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{rows.map(({ budget: b, cap, spent, pct, over }) => (
+					{rows.map(({ budget: b, progress }) => (
 						<Card key={b.id}>
 							<CardContent className="space-y-3 pt-6">
 								<div className="flex items-start justify-between gap-2">
@@ -135,21 +135,28 @@ export function BudgetClient() {
 									</div>
 								</div>
 
-								<ProgressBar pct={pct} over={over} />
-
-								<div className="flex items-center justify-between text-sm tabular-nums">
-									<span className={over ? "font-semibold text-destructive" : ""}>
-										{formatMoney(spent, currency)}
-									</span>
-									<span className="text-muted-foreground">
-										/ {formatMoney(cap, currency)}
-									</span>
-								</div>
-								{over && (
-									<p className="flex items-center gap-1 text-xs font-medium text-destructive">
-										<AlertTriangle className="h-3 w-3" />
-										Over by {formatMoney(spent - cap, currency)}
+								{progress.status === "unavailable" ? (
+									<p className="text-xs text-muted-foreground" role="status">
+										Conversion unavailable: missing {progress.missingCurrencies.join(", ")} rate.
 									</p>
+								) : (
+									<>
+										<ProgressBar pct={progress.pct} over={progress.over} />
+										<div className="flex items-center justify-between text-sm tabular-nums">
+											<span className={progress.over ? "font-semibold text-destructive" : ""}>
+												{formatMoney(progress.spent, currency)}
+											</span>
+											<span className="text-muted-foreground">
+												/ {formatMoney(progress.cap, currency)}
+											</span>
+										</div>
+										{progress.over && (
+											<p className="flex items-center gap-1 text-xs font-medium text-destructive">
+												<AlertTriangle className="h-3 w-3" />
+												Over by {formatMoney(progress.spent - progress.cap, currency)}
+											</p>
+										)}
+									</>
 								)}
 							</CardContent>
 						</Card>

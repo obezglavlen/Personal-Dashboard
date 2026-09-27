@@ -11,7 +11,7 @@ import { subscriptionSchema } from "@/lib/validations/subscription";
 import { taskSchema } from "@/lib/validations/task";
 import { incomeSchema } from "@/lib/validations/income";
 import { taxConfigSchema, taxRecordSchema } from "@/lib/validations/tax";
-import { EXPORT_VERSION } from "../export/route";
+import { BACKUP_SCOPE, EXPORT_VERSION } from "../export/route";
 
 type Json = Record<string, unknown>;
 type Tx = Prisma.TransactionClient;
@@ -55,6 +55,35 @@ async function handler(req: Request): Promise<Response> {
 	}
 
 	const data = body.data;
+	if (
+		replace &&
+		BACKUP_SCOPE.included.some(
+			(key) =>
+				!Array.isArray(data[key]) ||
+				(data[key] as unknown[]).some(
+					(row) => !row || typeof row !== "object" || Array.isArray(row),
+				),
+		)
+	) {
+		throw new ApiError(400, "Invalid replace file: missing or invalid included dataset");
+	}
+	if (replace) {
+		// In version-1 exports these dates are always present. The normal merge
+		// importer fills missing/invalid dates with today; doing that after a
+		// destructive replace would silently move historical records.
+		for (const [resource, field] of Object.entries({
+			subscriptions: "startDate",
+			expenses: "date",
+			income: "date",
+			taxRecords: "date",
+		})) {
+			if ((data[resource] as Json[]).some((row) =>
+				typeof row[field] !== "string" || Number.isNaN(new Date(row[field] as string).getTime()),
+			)) {
+				throw new ApiError(400, `Invalid replace file: ${resource} contains a missing or invalid ${field}`);
+			}
+		}
+	}
 	const imported: Record<string, number> = {};
 	let skipped = 0;
 
@@ -161,6 +190,16 @@ async function handler(req: Request): Promise<Response> {
 		},
 	) as Array<Json & { taxConfigId?: string | null }>;
 
+	if (replace && skipped > 0) {
+		throw new ApiError(400, `Invalid replace file: ${skipped} row(s) would be skipped`);
+	}
+	if (replace) {
+		const sourceConfigIds = new Set(taxConfigs.map(({ oldId }) => oldId));
+		if ([...taxRecords, ...income].some(({ taxConfigId }) => taxConfigId && !sourceConfigIds.has(taxConfigId))) {
+			throw new ApiError(400, "Invalid replace file: tax record or income references a missing tax config");
+		}
+	}
+
 	await prisma.$transaction(async (tx: Tx) => {
 		if (replace) {
 			// Delete in FK-safe order (records reference configs).
@@ -227,7 +266,7 @@ async function handler(req: Request): Promise<Response> {
 		await createMany(tx.income, income.map(remapConfig), "income");
 	});
 
-	return NextResponse.json({ imported, skipped });
+	return NextResponse.json({ imported, skipped, mode: replace ? "replace" : "merge", scope: BACKUP_SCOPE });
 }
 
 export const POST = route(handler);

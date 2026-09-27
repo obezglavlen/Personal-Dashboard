@@ -40,8 +40,8 @@ export function NetWorthWidget() {
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
-					<CardTitle>Net Worth</CardTitle>
-					<CardDescription>Across {accounts.length} accounts</CardDescription>
+					<CardTitle>Accounting</CardTitle>
+					<CardDescription>Net worth across {accounts.length} accounts</CardDescription>
 				</div>
 				<Link
 					href="/net-worth"

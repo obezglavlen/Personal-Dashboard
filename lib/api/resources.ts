@@ -22,6 +22,7 @@ import {
 	buildTaskData,
 } from "./build-data";
 import { crudHandlers } from "./crud";
+import { ApiError } from "./errors";
 
 /**
  * Resource definitions: a single source of truth for each model's CRUD
@@ -157,6 +158,18 @@ export const taxConfigHandlers = crudHandlers({
 	serialize: serializeTaxConfig,
 });
 
+async function assertOwnedTaxConfig(
+	taxConfigId: string | null | undefined,
+	userId: string,
+) {
+	if (taxConfigId == null) return;
+	const config = await prisma.taxConfig.findFirst({
+		where: { id: taxConfigId, userId },
+		select: { id: true },
+	});
+	if (!config) throw new ApiError(404, "Tax configuration not found");
+}
+
 export const taxRecordHandlers = crudHandlers({
 	delegate: prisma.taxRecord,
 	createSchema: taxRecordSchema,
@@ -164,18 +177,24 @@ export const taxRecordHandlers = crudHandlers({
 	orderBy: [{ date: "desc" }, { createdAt: "desc" }],
 	include: { taxConfig: true },
 	serialize: serializeTaxRecord,
-	toCreateData: ({ month, year, ...rest }, userId) => ({
-		...rest,
-		date: new Date(Date.UTC(year, month - 1, 1)),
-		userId,
-	}),
-	toUpdateData: ({ month, year, ...rest }) => ({
-		...rest,
-		...(month !== undefined &&
-			year !== undefined && {
-				date: new Date(Date.UTC(year, month - 1, 1)),
-			}),
-	}),
+	toCreateData: async ({ month, year, ...rest }, userId) => {
+		await assertOwnedTaxConfig(rest.taxConfigId, userId);
+		return {
+			...rest,
+			date: new Date(Date.UTC(year, month - 1, 1)),
+			userId,
+		};
+	},
+	toUpdateData: async ({ month, year, ...rest }, userId) => {
+		await assertOwnedTaxConfig(rest.taxConfigId, userId);
+		return {
+			...rest,
+			...(month !== undefined &&
+				year !== undefined && {
+					date: new Date(Date.UTC(year, month - 1, 1)),
+				}),
+		};
+	},
 });
 
 export const incomeHandlers = crudHandlers({
@@ -185,15 +204,21 @@ export const incomeHandlers = crudHandlers({
 	orderBy: [{ date: "desc" }, { createdAt: "desc" }],
 	include: { taxConfig: true },
 	serialize: serializeIncome,
-	toCreateData: ({ date, ...rest }, userId) => ({
-		...rest,
-		date: date ? new Date(date) : new Date(),
-		userId,
-	}),
-	toUpdateData: ({ date, ...rest }) => ({
-		...rest,
-		...(date !== undefined && { date: date ? new Date(date) : new Date() }),
-	}),
+	toCreateData: async ({ date, ...rest }, userId) => {
+		await assertOwnedTaxConfig(rest.taxConfigId, userId);
+		return {
+			...rest,
+			date: date ? new Date(date) : new Date(),
+			userId,
+		};
+	},
+	toUpdateData: async ({ date, ...rest }, userId) => {
+		await assertOwnedTaxConfig(rest.taxConfigId, userId);
+		return {
+			...rest,
+			...(date !== undefined && { date: date ? new Date(date) : new Date() }),
+		};
+	},
 });
 
 export const serializeBudget = (b: Row) => ({

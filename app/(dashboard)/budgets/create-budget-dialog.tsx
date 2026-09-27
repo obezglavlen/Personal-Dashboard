@@ -102,21 +102,21 @@ export function CreateBudgetDialog({
 			} else {
 				await apiPost("/api/budgets", body);
 			}
-			toast.success(mode.kind === "edit" ? "Budget updated" : "Budget created");
+			toast.success(mode.kind === "edit" ? "Limit updated" : "Limit created");
 			onSaved();
 			onModeChange({ kind: "create" });
 			onOpenChange(false);
 		} catch (err) {
 			toast.error(
 				mode.kind === "edit"
-					? "Failed to update budget"
-					: "Failed to create budget",
+					? "Failed to update limit"
+					: "Failed to create limit",
 				{ description: err instanceof Error ? err.message : undefined },
 			);
 		}
 	}
 
-	const title = mode.kind === "edit" ? "Edit Budget" : "Create Budget";
+	const title = mode.kind === "edit" ? "Edit Limit" : "Create Limit";
 	const submitLabel = mode.kind === "edit" ? "Save" : "Create";
 
 	return (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/api-client";
@@ -52,8 +53,7 @@ export function CommandPalette({
 	const router = useRouter();
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState(0);
-	const inputRef = useRef<HTMLInputElement>(null);
-	const listRef = useRef<HTMLUListElement>(null);
+	const openerRef = useRef<HTMLElement | null>(null);
 
 	// Fetch the searchable collections only while the palette is open; SWR keys
 	// of `null` are skipped, so the dashboard never eagerly loads these.
@@ -93,9 +93,9 @@ export function CommandPalette({
 		fetcher,
 	);
 
-	function close() {
+	const close = useCallback(() => {
 		onOpenChange(false);
-	}
+	}, [onOpenChange]);
 
 	const results = useMemo<Result[]>(() => {
 		const q = query.trim().toLowerCase();
@@ -149,7 +149,7 @@ export function CommandPalette({
 				out.push({ key: `sub:${s.id}`, group: "Subscriptions", label: s.name, sub: s.tags.join(", ") || undefined, onSelect: goTo("/subscriptions") });
 			}
 			for (const b of matchAndRank(query, budgets ?? [], (x) => `${x.name} ${x.tags.join(" ")}`, PER_GROUP)) {
-				out.push({ key: `bud:${b.id}`, group: "Budgets", label: b.name, sub: b.tags.join(", ") || undefined, onSelect: goTo("/budgets") });
+				out.push({ key: `bud:${b.id}`, group: "Limits", label: b.name, sub: b.tags.join(", ") || undefined, onSelect: goTo("/budgets") });
 			}
 			for (const g of matchAndRank(query, goals ?? [], (x) => x.name, PER_GROUP)) {
 				out.push({ key: `goal:${g.id}`, group: "Goals", label: g.name, onSelect: goTo("/net-worth") });
@@ -169,9 +169,10 @@ export function CommandPalette({
 		}
 
 		return out;
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [
 		query,
+		router,
+		close,
 		bookmarks,
 		notes,
 		tasks,
@@ -185,13 +186,11 @@ export function CommandPalette({
 		recurring,
 	]);
 
-	// Reset state and focus when opened.
+	// Reset search state each time the palette is opened.
 	useEffect(() => {
 		if (open) {
 			setQuery("");
 			setActive(0);
-			// Focus after the panel mounts.
-			requestAnimationFrame(() => inputRef.current?.focus());
 		}
 	}, [open]);
 
@@ -200,23 +199,8 @@ export function CommandPalette({
 		setActive((a) => Math.min(a, Math.max(0, results.length - 1)));
 	}, [results.length]);
 
-	// Body scroll lock while open.
-	useEffect(() => {
-		if (!open) return;
-		const prev = document.body.style.overflow;
-		document.body.style.overflow = "hidden";
-		return () => {
-			document.body.style.overflow = prev;
-		};
-	}, [open]);
-
-	if (!open) return null;
-
 	function onKeyDown(e: React.KeyboardEvent) {
-		if (e.key === "Escape") {
-			e.preventDefault();
-			close();
-		} else if (e.key === "ArrowDown") {
+		if (e.key === "ArrowDown") {
 			e.preventDefault();
 			setActive((a) => Math.min(a + 1, results.length - 1));
 		} else if (e.key === "ArrowUp") {
@@ -240,21 +224,23 @@ export function CommandPalette({
 	});
 
 	return (
-		<div
-			className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12vh] backdrop-blur-sm"
-			onClick={close}
-			role="presentation"
-		>
-			{/* biome-ignore lint/a11y/useKeyWithClickEvents: container stops propagation; interaction is via the input/list */}
-			<div
-				className="w-full max-w-lg overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
-				onClick={(e) => e.stopPropagation()}
-				role="dialog"
-				aria-modal="true"
-				aria-label="Command palette"
-			>
+		<DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+			<DialogPrimitive.Portal>
+				<DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+				<DialogPrimitive.Content
+					className="fixed left-1/2 top-[12vh] z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+					aria-modal="true"
+					aria-describedby={undefined}
+					onOpenAutoFocus={() => {
+						openerRef.current = document.activeElement as HTMLElement | null;
+					}}
+					onCloseAutoFocus={(event) => {
+						event.preventDefault();
+						if (openerRef.current?.isConnected) openerRef.current.focus();
+					}}
+				>
+				<DialogPrimitive.Title className="sr-only">Command palette</DialogPrimitive.Title>
 				<input
-					ref={inputRef}
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					onKeyDown={onKeyDown}
@@ -262,7 +248,7 @@ export function CommandPalette({
 					className="w-full border-b border-border bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
 					aria-label="Search"
 				/>
-				<ul ref={listRef} className="max-h-[60vh] overflow-y-auto p-2">
+				<ul className="max-h-[60vh] overflow-y-auto p-2">
 					{results.length === 0 ? (
 						<li className="px-3 py-6 text-center text-sm text-muted-foreground">
 							No results.
@@ -300,7 +286,8 @@ export function CommandPalette({
 						))
 					)}
 				</ul>
-			</div>
-		</div>
+				</DialogPrimitive.Content>
+			</DialogPrimitive.Portal>
+		</DialogPrimitive.Root>
 	);
 }

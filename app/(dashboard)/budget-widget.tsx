@@ -10,8 +10,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { spentForBudget } from "@/lib/budget";
-import { convertToBase, formatMoney } from "@/lib/format";
+import { budgetProgress } from "@/lib/budget";
+import { formatMoney } from "@/lib/format";
 import { useCurrency } from "@/lib/hooks/use-currency";
 import { useRates } from "@/lib/hooks/use-rates";
 import { useResource } from "@/lib/hooks/use-resource";
@@ -31,12 +31,10 @@ export function BudgetWidget() {
 
 	const rows = useMemo(
 		() =>
-			budgets.slice(0, 4).map((b) => {
-				const cap = convertToBase(b.amount, b.currency, currency, rates);
-				const spent = spentForBudget(b, expenses, currency, rates);
-				const pct = cap > 0 ? (spent / cap) * 100 : 0;
-				return { budget: b, cap, spent, pct, over: spent > cap };
-			}),
+			budgets.slice(0, 4).map((b) => ({
+				budget: b,
+				progress: budgetProgress(b, expenses, currency, rates),
+			})),
 		[budgets, expenses, currency, rates],
 	);
 
@@ -44,7 +42,7 @@ export function BudgetWidget() {
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0">
 				<div>
-					<CardTitle>Budgets</CardTitle>
+					<CardTitle>Limits</CardTitle>
 					<CardDescription>This month&apos;s spending caps</CardDescription>
 				</div>
 				<Link
@@ -57,7 +55,7 @@ export function BudgetWidget() {
 			<CardContent>
 				{rows.length === 0 ? (
 					<p className="text-sm text-muted-foreground">
-						No budgets yet.{" "}
+						No limits yet.{" "}
 						<Link href="/budgets" className="underline hover:text-foreground">
 							Create one
 						</Link>
@@ -65,22 +63,30 @@ export function BudgetWidget() {
 					</p>
 				) : (
 					<ul className="space-y-3">
-						{rows.map(({ budget: b, cap, spent, pct, over }) => (
+						{rows.map(({ budget: b, progress }) => (
 							<li key={b.id} className="space-y-1.5">
 								<div className="flex items-center justify-between text-sm">
 									<span className="truncate font-medium">{b.name}</span>
-									<span
-										className={`tabular-nums ${over ? "font-semibold text-destructive" : "text-muted-foreground"}`}
-									>
-										{formatMoney(spent, currency)} / {formatMoney(cap, currency)}
-									</span>
+									{progress.status === "available" && (
+										<span
+											className={`tabular-nums ${progress.over ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+										>
+											{formatMoney(progress.spent, currency)} / {formatMoney(progress.cap, currency)}
+										</span>
+									)}
 								</div>
-								<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-									<div
-										className={`h-full rounded-full transition-all ${over ? "bg-destructive" : "bg-primary"}`}
-										style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
-									/>
-								</div>
+								{progress.status === "unavailable" ? (
+									<p className="text-xs text-muted-foreground" role="status">
+										Conversion unavailable: missing {progress.missingCurrencies.join(", ")} rate.
+									</p>
+								) : (
+									<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+										<div
+											className={`h-full rounded-full transition-all ${progress.over ? "bg-destructive" : "bg-primary"}`}
+											style={{ width: `${Math.min(100, Math.max(0, progress.pct))}%` }}
+										/>
+									</div>
+								)}
 							</li>
 						))}
 					</ul>

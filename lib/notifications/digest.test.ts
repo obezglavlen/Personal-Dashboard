@@ -76,6 +76,19 @@ describe("buildDigest", () => {
 		expect(off).toBeNull();
 	});
 
+	it("titles spending-cap alerts Limits while preserving the same threshold behavior", () => {
+		const msg = buildDigest(
+			base({
+				budgets: [{ name: "Food", amount: 100, currency: "USD", tags: ["food"] }],
+				expenses: [{ amount: 90, currency: "USD", date: "2026-06-10", tags: ["food"] }],
+			}),
+			now,
+		);
+		expect(msg).toContain("<b>💰 Limits</b>");
+		expect(msg).toContain("Food:");
+		expect(msg).not.toContain("<b>💰 Budgets</b>");
+	});
+
 	it("ignores a budget below the configured threshold (default 80%)", () => {
 		const msg = buildDigest(
 			base({

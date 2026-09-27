@@ -199,7 +199,7 @@ export function buildDigest(data: DigestData, now: Date): string | null {
 			);
 		}
 		if (lines.length > 0) {
-			sections.push(`<b>💰 Budgets</b>\n${lines.join("\n")}`);
+			sections.push(`<b>💰 Limits</b>\n${lines.join("\n")}`);
 		}
 	}
 
